@@ -9,6 +9,9 @@ obj/
 .env.*
 !.env.example
 
+## Chicote de teste descartavel (nao faz parte do produto)
+tools/auth-test/
+
 ## Rider / VS Code
 .idea/
 .vscode/

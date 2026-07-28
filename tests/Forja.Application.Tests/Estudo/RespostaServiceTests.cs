@@ -1,5 +1,6 @@
 using Forja.Application.Common;
 using Forja.Application.Estudo;
+using Forja.Application.Questoes;
 using Forja.Domain.Common;
 using Forja.Domain.Estudo;
 using Forja.Domain.Gamificacao;
@@ -12,7 +13,7 @@ namespace Forja.Application.Tests.Estudo;
 [TestClass]
 public class RespostaServiceTests
 {
-    private readonly Mock<IQuestaoRepository> _questaoRepository = new();
+    private readonly Mock<IQuestaoService> _questaoService = new();
     private readonly Mock<IRespostaUsuarioRepository> _respostaRepository = new();
     private readonly Mock<IPontuacaoRepository> _pontuacaoRepository = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
@@ -21,7 +22,7 @@ public class RespostaServiceTests
     public RespostaServiceTests()
     {
         _service = new RespostaService(
-            _questaoRepository.Object,
+            _questaoService.Object,
             _respostaRepository.Object,
             _pontuacaoRepository.Object,
             _unitOfWork.Object);
@@ -40,7 +41,7 @@ public class RespostaServiceTests
         var usuarioId = Guid.NewGuid();
         var questaoId = Guid.NewGuid();
 
-        _questaoRepository.Setup(r => r.GetByIdAsync(questaoId, It.IsAny<CancellationToken>()))
+        _questaoService.Setup(s => s.ObterPorIdAsync(questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CriarQuestaoAprovada(questaoId));
         _respostaRepository.Setup(r => r.ExisteRespostaPontuadaAsync(usuarioId, questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -65,7 +66,7 @@ public class RespostaServiceTests
         var usuarioId = Guid.NewGuid();
         var questaoId = Guid.NewGuid();
 
-        _questaoRepository.Setup(r => r.GetByIdAsync(questaoId, It.IsAny<CancellationToken>()))
+        _questaoService.Setup(s => s.ObterPorIdAsync(questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CriarQuestaoAprovada(questaoId));
         _respostaRepository.Setup(r => r.ExisteRespostaPontuadaAsync(usuarioId, questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
@@ -89,7 +90,7 @@ public class RespostaServiceTests
         var usuarioId = Guid.NewGuid();
         var questaoId = Guid.NewGuid();
 
-        _questaoRepository.Setup(r => r.GetByIdAsync(questaoId, It.IsAny<CancellationToken>()))
+        _questaoService.Setup(s => s.ObterPorIdAsync(questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CriarQuestaoAprovada(questaoId));
         _respostaRepository.Setup(r => r.ExisteRespostaPontuadaAsync(usuarioId, questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -112,7 +113,7 @@ public class RespostaServiceTests
         var usuarioId = Guid.NewGuid();
         var questaoId = Guid.NewGuid();
 
-        _questaoRepository.Setup(r => r.GetByIdAsync(questaoId, It.IsAny<CancellationToken>()))
+        _questaoService.Setup(s => s.ObterPorIdAsync(questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CriarQuestaoAprovada(questaoId));
         _respostaRepository.Setup(r => r.ExisteRespostaPontuadaAsync(usuarioId, questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
@@ -136,8 +137,8 @@ public class RespostaServiceTests
         var usuarioId = Guid.NewGuid();
         var questaoId = Guid.NewGuid();
 
-        _questaoRepository.Setup(r => r.GetByIdAsync(questaoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Questao?)null);
+        _questaoService.Setup(s => s.ObterPorIdAsync(questaoId, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new NotFoundException("Questão", questaoId));
 
         var acao = () => _service.RegistrarRespostaAsync(usuarioId, questaoId, "A", tempoRespostaMs: 10_000, pomodoroId: null, ehRevisao: false);
 

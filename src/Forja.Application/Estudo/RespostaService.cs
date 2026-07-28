@@ -1,8 +1,7 @@
-using Forja.Application.Common;
+using Forja.Application.Questoes;
 using Forja.Domain.Common;
 using Forja.Domain.Estudo;
 using Forja.Domain.Gamificacao;
-using Forja.Domain.Questoes;
 
 namespace Forja.Application.Estudo;
 
@@ -19,7 +18,7 @@ public class RespostaService : IRespostaService
     /// </summary>
     private const int TempoMinimoMs = 5_000;
 
-    private readonly IQuestaoRepository _questaoRepository;
+    private readonly IQuestaoService _questaoService;
     private readonly IRespostaUsuarioRepository _respostaRepository;
     private readonly IPontuacaoRepository _pontuacaoRepository;
     private readonly IUnitOfWork _unitOfWork;
@@ -27,17 +26,17 @@ public class RespostaService : IRespostaService
     /// <summary>
     /// Cria uma nova instância do serviço.
     /// </summary>
-    /// <param name="questaoRepository">Repositório de questões, para obter o gabarito.</param>
+    /// <param name="questaoService">Serviço de questões, para obter a questão aprovada e seu gabarito.</param>
     /// <param name="respostaRepository">Repositório de respostas de usuário.</param>
     /// <param name="pontuacaoRepository">Repositório de pontuação de usuário.</param>
     /// <param name="unitOfWork">Unit of work para persistir resposta e pontuação em uma única transação.</param>
     public RespostaService(
-        IQuestaoRepository questaoRepository,
+        IQuestaoService questaoService,
         IRespostaUsuarioRepository respostaRepository,
         IPontuacaoRepository pontuacaoRepository,
         IUnitOfWork unitOfWork)
     {
-        _questaoRepository = questaoRepository;
+        _questaoService = questaoService;
         _respostaRepository = respostaRepository;
         _pontuacaoRepository = pontuacaoRepository;
         _unitOfWork = unitOfWork;
@@ -53,11 +52,9 @@ public class RespostaService : IRespostaService
         bool ehRevisao,
         CancellationToken cancellationToken = default)
     {
-        var questao = await _questaoRepository.GetByIdAsync(questaoId, cancellationToken);
-        if (questao is null || questao.Status != StatusQuestao.Aprovada)
-        {
-            throw new NotFoundException("Questão", questaoId);
-        }
+        // A checagem de que a questão existe e está aprovada já é feita pelo QuestaoService —
+        // reaproveitada aqui em vez de duplicada.
+        var questao = await _questaoService.ObterPorIdAsync(questaoId, cancellationToken);
 
         var correta = string.Equals(respostaDada.Trim(), questao.Gabarito.Trim(), StringComparison.OrdinalIgnoreCase);
         var chute = tempoRespostaMs < TempoMinimoMs;
@@ -87,27 +84,17 @@ public class RespostaService : IRespostaService
         var pontuacao = await _pontuacaoRepository.GetByIdAsync(usuarioId, cancellationToken);
         if (pontua)
         {
-            var inicioSemanaAtual = InicioDaSemana(DateTimeOffset.UtcNow);
+            var pontuacaoJaExistia = pontuacao is not null;
+            pontuacao ??= new Pontuacao { UsuarioId = usuarioId };
+            pontuacao.RegistrarPontos(pontosConcedidos, DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime));
 
-            if (pontuacao is null)
+            if (pontuacaoJaExistia)
             {
-                pontuacao = new Pontuacao
-                {
-                    UsuarioId = usuarioId,
-                    PontosTotal = pontosConcedidos,
-                    PontosSemanaAtual = pontosConcedidos,
-                    SemanaReferencia = inicioSemanaAtual,
-                };
-                await _pontuacaoRepository.AddAsync(pontuacao, cancellationToken);
+                _pontuacaoRepository.Update(pontuacao);
             }
             else
             {
-                pontuacao.PontosTotal += pontosConcedidos;
-                pontuacao.PontosSemanaAtual = pontuacao.SemanaReferencia == inicioSemanaAtual
-                    ? pontuacao.PontosSemanaAtual + pontosConcedidos
-                    : pontosConcedidos;
-                pontuacao.SemanaReferencia = inicioSemanaAtual;
-                _pontuacaoRepository.Update(pontuacao);
+                await _pontuacaoRepository.AddAsync(pontuacao, cancellationToken);
             }
         }
 
@@ -116,12 +103,5 @@ public class RespostaService : IRespostaService
         await _unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new RegistrarRespostaResultado(resposta, questao, pontuacao ?? new Pontuacao { UsuarioId = usuarioId });
-    }
-
-    private static DateOnly InicioDaSemana(DateTimeOffset momento)
-    {
-        var data = DateOnly.FromDateTime(momento.UtcDateTime);
-        var diasDesdeSegunda = ((int)data.DayOfWeek + 6) % 7;
-        return data.AddDays(-diasDesdeSegunda);
     }
 }

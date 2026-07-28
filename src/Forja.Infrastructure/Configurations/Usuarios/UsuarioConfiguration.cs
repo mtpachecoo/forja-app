@@ -14,5 +14,12 @@ public class UsuarioConfiguration : IEntityTypeConfiguration<Usuario>
     {
         builder.ToTable("usuarios");
         builder.HasKey(u => u.Id);
+
+        // CriadoEm nao e preenchido pelo codigo (fica default(DateTimeOffset) se nao setado
+        // explicitamente); sem isso, o INSERT gravaria uma data invalida em vez de usar o
+        // DEFAULT now() do Postgres.
+        builder.Property(u => u.CriadoEm)
+            .HasDefaultValueSql("now()")
+            .ValueGeneratedOnAdd();
     }
 }

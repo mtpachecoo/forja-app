@@ -47,6 +47,8 @@ public static class DependencyInjection
         services.AddScoped<ISessaoEstudoRepository, SessaoEstudoRepository>();
         services.AddScoped<IRevisaoEspacadaRepository, RevisaoEspacadaRepository>();
         services.AddScoped<IPontuacaoRepository, PontuacaoRepository>();
+        services.AddScoped<IIdentidadeExternaRepository, NeonAuthUserRepository>();
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;
     }

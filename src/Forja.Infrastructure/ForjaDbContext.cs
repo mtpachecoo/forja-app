@@ -4,6 +4,7 @@ using Forja.Domain.Estudo;
 using Forja.Domain.Gamificacao;
 using Forja.Domain.Questoes;
 using Forja.Domain.Usuarios;
+using Forja.Infrastructure.ExternalAuth;
 using Microsoft.EntityFrameworkCore;
 
 namespace Forja.Infrastructure;
@@ -78,6 +79,11 @@ public class ForjaDbContext : DbContext
 
     /// <summary>Medalhas conquistadas por usuários.</summary>
     public DbSet<UsuarioMedalha> UsuarioMedalhas => Set<UsuarioMedalha>();
+
+    /// <summary>
+    /// Usuários do Neon Auth (<c>neon_auth.user</c>), somente leitura — schema gerenciado externamente.
+    /// </summary>
+    public DbSet<NeonAuthUser> NeonAuthUsers => Set<NeonAuthUser>();
 
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)

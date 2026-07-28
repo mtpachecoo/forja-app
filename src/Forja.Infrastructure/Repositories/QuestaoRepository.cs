@@ -15,13 +15,18 @@ public class QuestaoRepository : Repository<Questao, Guid>, IQuestaoRepository
 
     /// <inheritdoc />
     public async Task<IReadOnlyList<Questao>> GetByFiltroAsync(
-        Guid carreiraId,
+        Guid? carreiraId,
         Guid? bancaId,
         Guid? disciplinaId,
         StatusQuestao? status,
         CancellationToken cancellationToken = default)
     {
-        var query = Context.Questoes.AsNoTracking().Where(q => q.CarreiraId == carreiraId);
+        var query = Context.Questoes.AsNoTracking().AsQueryable();
+
+        if (carreiraId.HasValue)
+        {
+            query = query.Where(q => q.CarreiraId == carreiraId.Value);
+        }
 
         if (bancaId.HasValue)
         {

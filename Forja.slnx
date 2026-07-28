@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Forja.Api/Forja.Api.csproj" />
+    <Project Path="src/Forja.Application/Forja.Application.csproj" />
+    <Project Path="src/Forja.Domain/Forja.Domain.csproj" />
+    <Project Path="src/Forja.Infrastructure/Forja.Infrastructure.csproj" />
+  </Folder>
+</Solution>

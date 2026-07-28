@@ -5,4 +5,7 @@
     <Project Path="src/Forja.Domain/Forja.Domain.csproj" />
     <Project Path="src/Forja.Infrastructure/Forja.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Forja.Infrastructure.Tests/Forja.Infrastructure.Tests.csproj" />
+  </Folder>
 </Solution>

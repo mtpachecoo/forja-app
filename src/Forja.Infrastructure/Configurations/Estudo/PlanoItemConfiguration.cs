@@ -1,3 +1,4 @@
+using Forja.Domain.Catalogo;
 using Forja.Domain.Estudo;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -22,6 +23,11 @@ public class PlanoItemConfiguration : IEntityTypeConfiguration<PlanoItem>
         builder.HasOne<PlanoEstudo>()
             .WithMany()
             .HasForeignKey(p => p.PlanoId)
+            .IsRequired();
+
+        builder.HasOne<Topico>()
+            .WithMany()
+            .HasForeignKey(p => p.TopicoId)
             .IsRequired();
     }
 }

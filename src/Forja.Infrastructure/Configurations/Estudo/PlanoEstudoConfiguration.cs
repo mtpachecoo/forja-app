@@ -1,4 +1,6 @@
+using Forja.Domain.Catalogo;
 using Forja.Domain.Estudo;
+using Forja.Domain.Usuarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,5 +16,15 @@ public class PlanoEstudoConfiguration : IEntityTypeConfiguration<PlanoEstudo>
     {
         builder.ToTable("planos_estudo");
         builder.HasKey(p => p.Id);
+
+        builder.HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(p => p.UsuarioId)
+            .IsRequired();
+
+        builder.HasOne<Carreira>()
+            .WithMany()
+            .HasForeignKey(p => p.CarreiraId)
+            .IsRequired();
     }
 }

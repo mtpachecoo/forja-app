@@ -10,5 +10,6 @@
     <Project Path="tests/Forja.Application.Tests/Forja.Application.Tests.csproj" />
     <Project Path="tests/Forja.Infrastructure.Tests/Forja.Infrastructure.Tests.csproj" />
     <Project Path="tests/Forja.Infrastructure.Ia.Tests/Forja.Infrastructure.Ia.Tests.csproj" />
+    <Project Path="tests/Forja.Integration.Tests/Forja.Integration.Tests.csproj" />
   </Folder>
 </Solution>

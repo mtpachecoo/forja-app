@@ -1,3 +1,4 @@
+using Forja.Domain.Catalogo;
 using Forja.Domain.Conteudo;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -14,5 +15,10 @@ public class FonteConteudoConfiguration : IEntityTypeConfiguration<FonteConteudo
     {
         builder.ToTable("fontes_conteudo");
         builder.HasKey(f => f.Id);
+
+        builder.HasOne<Edital>()
+            .WithMany()
+            .HasForeignKey(f => f.EditalId)
+            .IsRequired(false);
     }
 }

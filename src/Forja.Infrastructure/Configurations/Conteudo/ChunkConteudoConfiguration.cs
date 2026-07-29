@@ -1,3 +1,4 @@
+using Forja.Domain.Catalogo;
 using Forja.Domain.Conteudo;
 using Forja.Infrastructure.Conversions;
 using Microsoft.EntityFrameworkCore;
@@ -18,5 +19,15 @@ public class ChunkConteudoConfiguration : IEntityTypeConfiguration<ChunkConteudo
 
         builder.Property(c => c.Embedding)
             .HasConversion(new EmbeddingVectorConverter());
+
+        builder.HasOne<FonteConteudo>()
+            .WithMany()
+            .HasForeignKey(c => c.FonteId)
+            .IsRequired();
+
+        builder.HasOne<Topico>()
+            .WithMany()
+            .HasForeignKey(c => c.TopicoId)
+            .IsRequired(false);
     }
 }

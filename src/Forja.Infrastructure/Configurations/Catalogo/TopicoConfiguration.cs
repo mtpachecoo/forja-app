@@ -14,5 +14,15 @@ public class TopicoConfiguration : IEntityTypeConfiguration<Topico>
     {
         builder.ToTable("topicos");
         builder.HasKey(t => t.Id);
+
+        builder.HasOne<Edital>()
+            .WithMany()
+            .HasForeignKey(t => t.EditalId)
+            .IsRequired();
+
+        builder.HasOne<Disciplina>()
+            .WithMany()
+            .HasForeignKey(t => t.DisciplinaId)
+            .IsRequired();
     }
 }

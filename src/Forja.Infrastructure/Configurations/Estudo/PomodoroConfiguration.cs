@@ -14,5 +14,10 @@ public class PomodoroConfiguration : IEntityTypeConfiguration<Pomodoro>
     {
         builder.ToTable("pomodoros");
         builder.HasKey(p => p.Id);
+
+        builder.HasOne<SessaoEstudo>()
+            .WithMany()
+            .HasForeignKey(p => p.SessaoId)
+            .IsRequired();
     }
 }

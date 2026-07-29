@@ -1,4 +1,5 @@
 using Forja.Domain.Gamificacao;
+using Forja.Domain.Usuarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,5 +15,15 @@ public class UsuarioMedalhaConfiguration : IEntityTypeConfiguration<UsuarioMedal
     {
         builder.ToTable("usuario_medalhas");
         builder.HasKey(u => new { u.UsuarioId, u.MedalhaId });
+
+        builder.HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(u => u.UsuarioId)
+            .IsRequired();
+
+        builder.HasOne<Medalha>()
+            .WithMany()
+            .HasForeignKey(u => u.MedalhaId)
+            .IsRequired();
     }
 }

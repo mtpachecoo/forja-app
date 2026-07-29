@@ -1,4 +1,6 @@
 using Forja.Domain.Estudo;
+using Forja.Domain.Questoes;
+using Forja.Domain.Usuarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,5 +16,15 @@ public class RevisaoEspacadaConfiguration : IEntityTypeConfiguration<RevisaoEspa
     {
         builder.ToTable("revisao_espacada");
         builder.HasKey(r => r.Id);
+
+        builder.HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(r => r.UsuarioId)
+            .IsRequired();
+
+        builder.HasOne<Questao>()
+            .WithMany()
+            .HasForeignKey(r => r.QuestaoId)
+            .IsRequired();
     }
 }

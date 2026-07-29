@@ -1,4 +1,5 @@
 using Forja.Domain.Estudo;
+using Forja.Domain.Usuarios;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,5 +15,10 @@ public class SessaoEstudoConfiguration : IEntityTypeConfiguration<SessaoEstudo>
     {
         builder.ToTable("sessoes_estudo");
         builder.HasKey(s => s.Id);
+
+        builder.HasOne<Usuario>()
+            .WithMany()
+            .HasForeignKey(s => s.UsuarioId)
+            .IsRequired();
     }
 }

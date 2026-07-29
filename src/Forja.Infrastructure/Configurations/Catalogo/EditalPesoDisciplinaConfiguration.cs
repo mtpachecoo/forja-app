@@ -19,5 +19,22 @@ public class EditalPesoDisciplinaConfiguration : IEntityTypeConfiguration<Edital
 
         builder.Property(e => e.Fonte)
             .HasConversion(new FontePesoDisciplinaConverter());
+
+        builder.HasOne<Edital>()
+            .WithMany()
+            .HasForeignKey(e => e.EditalId)
+            .IsRequired();
+
+        builder.HasOne<Disciplina>()
+            .WithMany()
+            .HasForeignKey(e => e.DisciplinaId)
+            .IsRequired();
+
+        // Segunda FK pra editais, só quando Fonte == HerdadoEditalAnterior — EF Core distingue as duas
+        // relações pelas propriedades de FK diferentes (EditalId vs. EditalOrigemId), mesmo sem navegação.
+        builder.HasOne<Edital>()
+            .WithMany()
+            .HasForeignKey(e => e.EditalOrigemId)
+            .IsRequired(false);
     }
 }

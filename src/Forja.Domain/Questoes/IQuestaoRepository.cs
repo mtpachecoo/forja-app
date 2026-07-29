@@ -23,4 +23,16 @@ public interface IQuestaoRepository : IRepository<Questao, Guid>
         Guid? disciplinaId,
         StatusQuestao? status,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Conta as questões aprovadas de uma carreira, agrupadas por disciplina. Usado no cálculo de peso
+    /// de disciplina por contagem (RF-003, caso "contagem_questoes").
+    /// </summary>
+    /// <param name="carreiraId">Identificador da carreira.</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+    /// <returns>
+    /// Dicionário de identificador de disciplina para quantidade de questões aprovadas. Disciplinas sem
+    /// nenhuma questão aprovada não aparecem no dicionário.
+    /// </returns>
+    Task<IReadOnlyDictionary<Guid, int>> ContarAprovadasPorDisciplinaAsync(Guid carreiraId, CancellationToken cancellationToken = default);
 }

@@ -41,6 +41,9 @@ public class ForjaDbContext : DbContext
     /// <summary>Tópicos de estudo.</summary>
     public DbSet<Topico> Topicos => Set<Topico>();
 
+    /// <summary>Peso de cada disciplina dentro de um edital, para priorização do plano de estudo.</summary>
+    public DbSet<EditalPesoDisciplina> EditalPesoDisciplina => Set<EditalPesoDisciplina>();
+
     /// <summary>Fontes de conteúdo.</summary>
     public DbSet<FonteConteudo> FontesConteudo => Set<FonteConteudo>();
 

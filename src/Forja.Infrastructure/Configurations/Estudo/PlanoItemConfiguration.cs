@@ -14,5 +14,14 @@ public class PlanoItemConfiguration : IEntityTypeConfiguration<PlanoItem>
     {
         builder.ToTable("plano_itens");
         builder.HasKey(p => p.Id);
+
+        // PlanoItem não tem navegação pra PlanoEstudo (POCOs sem navegação, por convenção deste
+        // projeto) — sem isso, o EF Core não sabe que precisa inserir o PlanoEstudo antes dos seus
+        // PlanoItem quando os dois são adicionados na mesma chamada de SaveChangesAsync (como faz
+        // PlanoEstudoService), e a ordem de INSERT pode violar a FK do banco.
+        builder.HasOne<PlanoEstudo>()
+            .WithMany()
+            .HasForeignKey(p => p.PlanoId)
+            .IsRequired();
     }
 }

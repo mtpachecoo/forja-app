@@ -23,4 +23,13 @@ public interface IChunkConteudoRepository : IRepository<ChunkConteudo, Guid>
     /// <param name="cancellationToken">Token de cancelamento da operação.</param>
     /// <returns>Lista somente leitura de chunks ordenados por similaridade.</returns>
     Task<IReadOnlyList<ChunkConteudo>> BuscarPorSimilaridadeAsync(float[] embedding, int quantidade, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém os chunks da(s) fonte(s) de conteúdo do tipo <see cref="TipoFonte.Edital"/> associadas a
+    /// um edital — usado para tentar extrair via IA a distribuição de questões por disciplina (RF-003).
+    /// </summary>
+    /// <param name="editalId">Identificador do edital.</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+    /// <returns>Lista somente leitura dos chunks do edital (vazia se não houver fonte indexada).</returns>
+    Task<IReadOnlyList<ChunkConteudo>> GetByEditalIdAsync(Guid editalId, CancellationToken cancellationToken = default);
 }

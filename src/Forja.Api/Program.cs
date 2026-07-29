@@ -17,6 +17,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IQuestaoService, QuestaoService>();
 builder.Services.AddScoped<IRespostaService, RespostaService>();
+builder.Services.AddScoped<IPesoDisciplinaService, PesoDisciplinaService>();
+builder.Services.AddScoped<IPlanoEstudoService, PlanoEstudoService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -81,6 +83,40 @@ app.MapPost("/respostas", async (
         resultado.Pontuacao.PontosSemanaAtual,
         resultado.Questao.Gabarito,
         resultado.Questao.Explicacao));
+}).RequireAuthorization();
+
+app.MapGet("/plano/atual", async (
+    Guid carreiraId,
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IPlanoEstudoService planoEstudoService,
+    CancellationToken cancellationToken) =>
+{
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var plano = await planoEstudoService.ObterOuGerarPlanoAtualAsync(
+        usuario.Id,
+        carreiraId,
+        usuario.TempoDisponivelMinDia,
+        usuario.Nivel,
+        cancellationToken);
+    return Results.Ok(PlanoAtualResponse.De(plano));
+}).RequireAuthorization();
+
+app.MapPost("/plano/recriar", async (
+    Guid carreiraId,
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IPlanoEstudoService planoEstudoService,
+    CancellationToken cancellationToken) =>
+{
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var resultado = await planoEstudoService.RecriarPlanoAsync(
+        usuario.Id,
+        carreiraId,
+        usuario.TempoDisponivelMinDia,
+        usuario.Nivel,
+        cancellationToken);
+    return Results.Ok(RecriarPlanoResponse.De(resultado));
 }).RequireAuthorization();
 
 app.Run();

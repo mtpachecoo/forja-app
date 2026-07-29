@@ -45,4 +45,17 @@ public class QuestaoRepository : Repository<Questao, Guid>, IQuestaoRepository
 
         return await query.ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyDictionary<Guid, int>> ContarAprovadasPorDisciplinaAsync(Guid carreiraId, CancellationToken cancellationToken = default)
+    {
+        var contagens = await Context.Questoes
+            .AsNoTracking()
+            .Where(q => q.CarreiraId == carreiraId && q.Status == StatusQuestao.Aprovada)
+            .GroupBy(q => q.DisciplinaId)
+            .Select(g => new { DisciplinaId = g.Key, Quantidade = g.Count() })
+            .ToListAsync(cancellationToken);
+
+        return contagens.ToDictionary(c => c.DisciplinaId, c => c.Quantidade);
+    }
 }

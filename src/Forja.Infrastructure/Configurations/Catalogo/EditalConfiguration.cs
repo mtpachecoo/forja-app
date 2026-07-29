@@ -14,5 +14,15 @@ public class EditalConfiguration : IEntityTypeConfiguration<Edital>
     {
         builder.ToTable("editais");
         builder.HasKey(e => e.Id);
+
+        builder.HasOne<Carreira>()
+            .WithMany()
+            .HasForeignKey(e => e.CarreiraId)
+            .IsRequired();
+
+        builder.HasOne<Banca>()
+            .WithMany()
+            .HasForeignKey(e => e.BancaId)
+            .IsRequired();
     }
 }

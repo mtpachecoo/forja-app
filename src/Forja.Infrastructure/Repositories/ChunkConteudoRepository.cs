@@ -33,4 +33,24 @@ public class ChunkConteudoRepository : Repository<ChunkConteudo, Guid>, IChunkCo
             .AsNoTracking()
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ChunkConteudo>> GetByEditalIdAsync(Guid editalId, CancellationToken cancellationToken = default)
+    {
+        var fonteIds = await Context.FontesConteudo
+            .AsNoTracking()
+            .Where(f => f.Tipo == TipoFonte.Edital && f.EditalId == editalId)
+            .Select(f => f.Id)
+            .ToListAsync(cancellationToken);
+
+        if (fonteIds.Count == 0)
+        {
+            return [];
+        }
+
+        return await Context.ChunksConteudo
+            .AsNoTracking()
+            .Where(c => fonteIds.Contains(c.FonteId))
+            .ToListAsync(cancellationToken);
+    }
 }

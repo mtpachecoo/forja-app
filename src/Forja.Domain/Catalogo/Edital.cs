@@ -17,6 +17,9 @@ public class Edital
     /// <summary>Ano de publicação do edital.</summary>
     public int Ano { get; set; }
 
+    /// <summary>Data da prova, quando já divulgada. <c>null</c> se o concurso ainda não tem data marcada.</summary>
+    public DateOnly? DataProva { get; set; }
+
     /// <summary>URL da fonte original do edital.</summary>
     public string? UrlFonte { get; set; }
 

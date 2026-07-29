@@ -18,4 +18,14 @@ public class UsuarioRepository : Repository<Usuario, Guid>, IUsuarioRepository
     {
         return await Context.Usuarios.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<Usuario>> GetByIdsAsync(IEnumerable<Guid> ids, CancellationToken cancellationToken = default)
+    {
+        var idsList = ids.ToList();
+        return await Context.Usuarios
+            .AsNoTracking()
+            .Where(u => idsList.Contains(u.Id))
+            .ToListAsync(cancellationToken);
+    }
 }

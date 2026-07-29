@@ -48,8 +48,10 @@ public static class DependencyInjection
         services.AddScoped<IPlanoEstudoRepository, PlanoEstudoRepository>();
         services.AddScoped<IPlanoItemRepository, PlanoItemRepository>();
         services.AddScoped<ISessaoEstudoRepository, SessaoEstudoRepository>();
+        services.AddScoped<IPomodoroRepository, PomodoroRepository>();
         services.AddScoped<IRevisaoEspacadaRepository, RevisaoEspacadaRepository>();
         services.AddScoped<IPontuacaoRepository, PontuacaoRepository>();
+        services.AddScoped<IStreakRepository, StreakRepository>();
         services.AddScoped<IIdentidadeExternaRepository, NeonAuthUserRepository>();
         services.AddScoped<IEditalRepository, EditalRepository>();
         services.AddScoped<IDisciplinaRepository, DisciplinaRepository>();

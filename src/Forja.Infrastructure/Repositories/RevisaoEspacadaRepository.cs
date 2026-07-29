@@ -21,4 +21,11 @@ public class RevisaoEspacadaRepository : Repository<RevisaoEspacada, Guid>, IRev
             .Where(r => r.UsuarioId == usuarioId && r.ProximaRevisaoEm <= ateData)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<RevisaoEspacada?> GetByUsuarioIdEQuestaoIdAsync(Guid usuarioId, Guid questaoId, CancellationToken cancellationToken = default)
+    {
+        return await Context.RevisoesEspacadas
+            .FirstOrDefaultAsync(r => r.UsuarioId == usuarioId && r.QuestaoId == questaoId, cancellationToken);
+    }
 }

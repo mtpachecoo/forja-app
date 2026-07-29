@@ -37,7 +37,12 @@ public class Pontuacao
         SemanaReferencia = inicioSemana;
     }
 
-    private static DateOnly InicioDaSemana(DateOnly data)
+    /// <summary>
+    /// Data de início (segunda-feira) da semana de referência que contém <paramref name="data"/>.
+    /// Compartilhado com quem precisa localizar a mesma "semana atual" usada por
+    /// <see cref="SemanaReferencia"/> — ex.: o ranking semanal (RF-013).
+    /// </summary>
+    public static DateOnly InicioDaSemana(DateOnly data)
     {
         var diasDesdeSegunda = ((int)data.DayOfWeek + 6) % 7;
         return data.AddDays(-diasDesdeSegunda);

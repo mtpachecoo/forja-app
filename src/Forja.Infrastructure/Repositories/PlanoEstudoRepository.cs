@@ -21,4 +21,13 @@ public class PlanoEstudoRepository : Repository<PlanoEstudo, Guid>, IPlanoEstudo
             .Where(p => p.UsuarioId == usuarioId)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<PlanoEstudo>> GetByCarreiraIdAsync(Guid carreiraId, CancellationToken cancellationToken = default)
+    {
+        return await Context.PlanosEstudo
+            .AsNoTracking()
+            .Where(p => p.CarreiraId == carreiraId)
+            .ToListAsync(cancellationToken);
+    }
 }

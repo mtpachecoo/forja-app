@@ -2,7 +2,10 @@ using System.Security.Claims;
 using Forja.Api;
 using Forja.Api.Auth;
 using Forja.Api.ExceptionHandling;
+using Forja.Application.Desempenho;
+using Forja.Application.Duvidas;
 using Forja.Application.Estudo;
+using Forja.Application.Gamificacao;
 using Forja.Application.Questoes;
 using Forja.Application.Usuarios;
 using Forja.Infrastructure;
@@ -17,8 +20,16 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IQuestaoService, QuestaoService>();
 builder.Services.AddScoped<IRespostaService, RespostaService>();
+builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddScoped<IPesoDisciplinaService, PesoDisciplinaService>();
 builder.Services.AddScoped<IPlanoEstudoService, PlanoEstudoService>();
+builder.Services.AddScoped<ISessaoEstudoService, SessaoEstudoService>();
+builder.Services.AddScoped<IIniciarSessaoComEfeitosService, IniciarSessaoComEfeitosService>();
+builder.Services.AddScoped<IPomodoroService, PomodoroService>();
+builder.Services.AddScoped<IRevisaoEspacadaService, RevisaoEspacadaService>();
+builder.Services.AddScoped<IStreakService, StreakService>();
+builder.Services.AddScoped<IPontuacaoService, PontuacaoService>();
+builder.Services.AddScoped<IAnaliseDesempenhoService, AnaliseDesempenhoService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -85,6 +96,71 @@ app.MapPost("/respostas", async (
         resultado.Questao.Explicacao));
 }).RequireAuthorization();
 
+app.MapPost("/duvidas", async (
+    DuvidaRequest request,
+    IRagService ragService,
+    CancellationToken cancellationToken) =>
+{
+    var resultado = await ragService.ResponderDuvidaAsync(request.QuestaoId, request.Pergunta, cancellationToken);
+    return Results.Ok(new DuvidaResponse(resultado.Resposta, resultado.ChunksUsadosIds));
+}).RequireAuthorization();
+
+app.MapPost("/sessao/iniciar", async (
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IIniciarSessaoComEfeitosService iniciarSessaoComEfeitosService,
+    CancellationToken cancellationToken) =>
+{
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var sessao = await iniciarSessaoComEfeitosService.IniciarAsync(usuario.Id, cancellationToken);
+    return Results.Ok(SessaoResponse.De(sessao));
+}).RequireAuthorization();
+
+app.MapPost("/sessao/{sessaoId:guid}/pomodoro/iniciar", async (
+    Guid sessaoId,
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IPomodoroService pomodoroService,
+    CancellationToken cancellationToken) =>
+{
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var pomodoro = await pomodoroService.IniciarPomodoroAsync(usuario.Id, sessaoId, cancellationToken);
+    return Results.Ok(PomodoroResponse.De(pomodoro));
+}).RequireAuthorization();
+
+app.MapPost("/sessao/{sessaoId:guid}/pomodoro/{pomodoroId:guid}/finalizar", async (
+    Guid sessaoId,
+    Guid pomodoroId,
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IPomodoroService pomodoroService,
+    CancellationToken cancellationToken) =>
+{
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var resultado = await pomodoroService.FinalizarPomodoroAsync(usuario.Id, sessaoId, pomodoroId, cancellationToken);
+    return Results.Ok(FinalizarPomodoroResponse.De(resultado));
+}).RequireAuthorization();
+
+app.MapGet("/revisao/pendente", async (
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IRevisaoEspacadaService revisaoEspacadaService,
+    CancellationToken cancellationToken) =>
+{
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var pendentes = await revisaoEspacadaService.ObterPendentesAsync(usuario.Id, cancellationToken);
+    return Results.Ok(pendentes.Select(RevisaoPendenteItem.De));
+}).RequireAuthorization();
+
+app.MapGet("/ranking/semanal", async (
+    Guid? carreiraId,
+    IPontuacaoService pontuacaoService,
+    CancellationToken cancellationToken) =>
+{
+    var ranking = await pontuacaoService.ObterRankingSemanalAsync(carreiraId, cancellationToken);
+    return Results.Ok(ranking.Select(RankingResponseItem.De));
+}).RequireAuthorization();
+
 app.MapGet("/plano/atual", async (
     Guid carreiraId,
     ClaimsPrincipal user,
@@ -100,6 +176,17 @@ app.MapGet("/plano/atual", async (
         usuario.Nivel,
         cancellationToken);
     return Results.Ok(PlanoAtualResponse.De(plano));
+}).RequireAuthorization();
+
+app.MapGet("/desempenho/alertas", async (
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IAnaliseDesempenhoService analiseDesempenhoService,
+    CancellationToken cancellationToken) =>
+{
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var alertas = await analiseDesempenhoService.DetectarQuedaDeDesempenhoAsync(usuario.Id, cancellationToken);
+    return Results.Ok(alertas.Select(AlertaDesempenhoResponse.De));
 }).RequireAuthorization();
 
 app.MapPost("/plano/recriar", async (

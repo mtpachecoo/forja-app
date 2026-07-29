@@ -4,6 +4,12 @@
     <ProjectReference Include="..\Forja.Domain\Forja.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Só os pacotes de abstração (Kernel, IChatCompletionService, ChatHistory) — o conector
+         específico do provedor (Gemini) fica isolado em Forja.Infrastructure.Ia. -->
+    <PackageReference Include="Microsoft.SemanticKernel" Version="1.78.0" />
+  </ItemGroup>
+
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>

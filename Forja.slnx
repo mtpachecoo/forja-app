@@ -4,9 +4,11 @@
     <Project Path="src/Forja.Application/Forja.Application.csproj" />
     <Project Path="src/Forja.Domain/Forja.Domain.csproj" />
     <Project Path="src/Forja.Infrastructure/Forja.Infrastructure.csproj" />
+    <Project Path="src/Forja.Infrastructure.Ia/Forja.Infrastructure.Ia.csproj" />
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Forja.Application.Tests/Forja.Application.Tests.csproj" />
     <Project Path="tests/Forja.Infrastructure.Tests/Forja.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Forja.Infrastructure.Ia.Tests/Forja.Infrastructure.Ia.Tests.csproj" />
   </Folder>
 </Solution>

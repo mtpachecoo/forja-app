@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Forja.Application\Forja.Application.csproj" />
     <ProjectReference Include="..\Forja.Infrastructure\Forja.Infrastructure.csproj" />
+    <ProjectReference Include="..\Forja.Infrastructure.Ia\Forja.Infrastructure.Ia.csproj" />
   </ItemGroup>
 
   <ItemGroup>

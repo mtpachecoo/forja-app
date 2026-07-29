@@ -6,10 +6,12 @@ using Forja.Application.Estudo;
 using Forja.Application.Questoes;
 using Forja.Application.Usuarios;
 using Forja.Infrastructure;
+using Forja.Infrastructure.Ia;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddIa(builder.Configuration);
 builder.Services.AddNeonAuthJwtBearer(builder.Configuration);
 builder.Services.AddAuthorization();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();

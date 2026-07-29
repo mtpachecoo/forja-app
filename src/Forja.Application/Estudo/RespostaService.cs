@@ -1,5 +1,4 @@
 using Forja.Application.Questoes;
-using Forja.Domain.Common;
 using Forja.Domain.Estudo;
 using Forja.Domain.Gamificacao;
 
@@ -21,7 +20,6 @@ public class RespostaService : IRespostaService
     private readonly IQuestaoService _questaoService;
     private readonly IRespostaUsuarioRepository _respostaRepository;
     private readonly IPontuacaoRepository _pontuacaoRepository;
-    private readonly IUnitOfWork _unitOfWork;
 
     /// <summary>
     /// Cria uma nova instância do serviço.
@@ -29,17 +27,14 @@ public class RespostaService : IRespostaService
     /// <param name="questaoService">Serviço de questões, para obter a questão aprovada e seu gabarito.</param>
     /// <param name="respostaRepository">Repositório de respostas de usuário.</param>
     /// <param name="pontuacaoRepository">Repositório de pontuação de usuário.</param>
-    /// <param name="unitOfWork">Unit of work para persistir resposta e pontuação em uma única transação.</param>
     public RespostaService(
         IQuestaoService questaoService,
         IRespostaUsuarioRepository respostaRepository,
-        IPontuacaoRepository pontuacaoRepository,
-        IUnitOfWork unitOfWork)
+        IPontuacaoRepository pontuacaoRepository)
     {
         _questaoService = questaoService;
         _respostaRepository = respostaRepository;
         _pontuacaoRepository = pontuacaoRepository;
-        _unitOfWork = unitOfWork;
     }
 
     /// <inheritdoc />
@@ -98,10 +93,9 @@ public class RespostaService : IRespostaService
             }
         }
 
-        // RN-010/RN-011/RN-012: resposta e pontuação persistem numa única chamada de SaveChanges —
-        // se qualquer passo acima falhar antes daqui, nada é gravado.
-        await _unitOfWork.SaveChangesAsync(cancellationToken);
-
+        // RN-010/RN-011/RN-012: resposta e pontuação são só enfileiradas aqui (AddAsync/Update) — quem
+        // persiste (IUnitOfWork.SaveChangesAsync) é o orquestrador (RegistrarRespostaComEfeitosService),
+        // numa única transação com a revisão espaçada.
         return new RegistrarRespostaResultado(resposta, questao, pontuacao ?? new Pontuacao { UsuarioId = usuarioId });
     }
 }

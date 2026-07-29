@@ -20,6 +20,7 @@ builder.Services.AddAuthorization();
 builder.Services.AddScoped<IUsuarioService, UsuarioService>();
 builder.Services.AddScoped<IQuestaoService, QuestaoService>();
 builder.Services.AddScoped<IRespostaService, RespostaService>();
+builder.Services.AddScoped<IRegistrarRespostaComEfeitosService, RegistrarRespostaComEfeitosService>();
 builder.Services.AddScoped<IRagService, RagService>();
 builder.Services.AddScoped<IPesoDisciplinaService, PesoDisciplinaService>();
 builder.Services.AddScoped<IPlanoEstudoService, PlanoEstudoService>();
@@ -73,11 +74,11 @@ app.MapPost("/respostas", async (
     RegistrarRespostaRequest request,
     ClaimsPrincipal user,
     IUsuarioService usuarioService,
-    IRespostaService respostaService,
+    IRegistrarRespostaComEfeitosService registrarRespostaComEfeitosService,
     CancellationToken cancellationToken) =>
 {
     var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
-    var resultado = await respostaService.RegistrarRespostaAsync(
+    var resultado = await registrarRespostaComEfeitosService.RegistrarAsync(
         usuario.Id,
         request.QuestaoId,
         request.RespostaDada,

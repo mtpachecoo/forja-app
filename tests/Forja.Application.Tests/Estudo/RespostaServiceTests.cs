@@ -1,7 +1,6 @@
 using Forja.Application.Common;
 using Forja.Application.Estudo;
 using Forja.Application.Questoes;
-using Forja.Domain.Common;
 using Forja.Domain.Estudo;
 using Forja.Domain.Gamificacao;
 using Forja.Domain.Questoes;
@@ -16,7 +15,6 @@ public class RespostaServiceTests
     private readonly Mock<IQuestaoService> _questaoService = new();
     private readonly Mock<IRespostaUsuarioRepository> _respostaRepository = new();
     private readonly Mock<IPontuacaoRepository> _pontuacaoRepository = new();
-    private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly RespostaService _service;
 
     public RespostaServiceTests()
@@ -24,8 +22,7 @@ public class RespostaServiceTests
         _service = new RespostaService(
             _questaoService.Object,
             _respostaRepository.Object,
-            _pontuacaoRepository.Object,
-            _unitOfWork.Object);
+            _pontuacaoRepository.Object);
     }
 
     private static Questao CriarQuestaoAprovada(Guid id, string gabarito = "A") => new()
@@ -57,7 +54,6 @@ public class RespostaServiceTests
         resultado.Pontuacao.PontosSemanaAtual.Should().Be(10);
 
         _pontuacaoRepository.Verify(r => r.AddAsync(It.Is<Pontuacao>(p => p.UsuarioId == usuarioId && p.PontosTotal == 10), It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -81,7 +77,6 @@ public class RespostaServiceTests
 
         _pontuacaoRepository.Verify(r => r.AddAsync(It.IsAny<Pontuacao>(), It.IsAny<CancellationToken>()), Times.Never);
         _pontuacaoRepository.Verify(r => r.Update(It.IsAny<Pontuacao>()), Times.Never);
-        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -108,30 +103,6 @@ public class RespostaServiceTests
     }
 
     [TestMethod]
-    public async Task RegistrarRespostaAsync_QuandoFalhaAoProcessarPontuacao_NaoDeixaRespostaPersistidaSozinha()
-    {
-        var usuarioId = Guid.NewGuid();
-        var questaoId = Guid.NewGuid();
-
-        _questaoService.Setup(s => s.ObterPorIdAsync(questaoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(CriarQuestaoAprovada(questaoId));
-        _respostaRepository.Setup(r => r.ExisteRespostaPontuadaAsync(usuarioId, questaoId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(false);
-        _pontuacaoRepository.Setup(r => r.GetByIdAsync(usuarioId, It.IsAny<CancellationToken>()))
-            .ThrowsAsync(new InvalidOperationException("falha simulada ao ler a pontuação"));
-
-        var acao = () => _service.RegistrarRespostaAsync(usuarioId, questaoId, "A", tempoRespostaMs: 10_000, pomodoroId: null, ehRevisao: false);
-
-        await acao.Should().ThrowAsync<InvalidOperationException>();
-
-        // A resposta foi enfileirada no change tracker (AddAsync), mas como a exceção interrompeu o
-        // fluxo antes do único SaveChangesAsync, nada foi efetivamente persistido — resposta e
-        // pontuação só existem juntas no banco, nunca uma sem a outra.
-        _respostaRepository.Verify(r => r.AddAsync(It.IsAny<RespostaUsuario>(), It.IsAny<CancellationToken>()), Times.Once);
-        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
-    }
-
-    [TestMethod]
     public async Task RegistrarRespostaAsync_QuestaoInexistente_LancaQuestaoNaoEncontrada()
     {
         var usuarioId = Guid.NewGuid();
@@ -143,6 +114,5 @@ public class RespostaServiceTests
         var acao = () => _service.RegistrarRespostaAsync(usuarioId, questaoId, "A", tempoRespostaMs: 10_000, pomodoroId: null, ehRevisao: false);
 
         await acao.Should().ThrowAsync<NotFoundException>();
-        _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Never);
     }
 }

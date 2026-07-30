@@ -6,6 +6,7 @@ using Forja.Application.Desempenho;
 using Forja.Application.Duvidas;
 using Forja.Application.Estudo;
 using Forja.Application.Gamificacao;
+using Forja.Application.Home;
 using Forja.Application.Onboarding;
 using Forja.Application.Questoes;
 using Forja.Application.Usuarios;
@@ -34,6 +35,7 @@ builder.Services.AddScoped<IStreakService, StreakService>();
 builder.Services.AddScoped<IPontuacaoService, PontuacaoService>();
 builder.Services.AddScoped<IAnaliseDesempenhoService, AnaliseDesempenhoService>();
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
+builder.Services.AddScoped<IHomeService, HomeService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -235,6 +237,18 @@ app.MapPost("/onboarding", async (
         cancellationToken);
 
     return Results.Ok(OnboardingResponse.De(resultado));
+}).RequireAuthorization();
+
+app.MapGet("/home", async (
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IHomeService homeService,
+    CancellationToken cancellationToken,
+    int atividades = 10) =>
+{
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var resumo = await homeService.ObterResumoAsync(usuario.Id, atividades, cancellationToken);
+    return Results.Ok(HomeResponse.De(resumo));
 }).RequireAuthorization();
 
 app.Run();

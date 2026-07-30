@@ -53,4 +53,26 @@ public class RespostaUsuarioRepository : Repository<RespostaUsuario, Guid>, IRes
                 """)
             .ToListAsync(cancellationToken);
     }
+
+    /// <inheritdoc />
+    public Task<int> ContarRespostasNoDiaAsync(Guid usuarioId, DateOnly dia, CancellationToken cancellationToken = default)
+    {
+        var inicio = dia.ToDateTime(TimeOnly.MinValue, DateTimeKind.Utc);
+        var fim = inicio.AddDays(1);
+
+        return Context.RespostasUsuario
+            .AsNoTracking()
+            .CountAsync(r => r.UsuarioId == usuarioId && r.CriadoEm >= inicio && r.CriadoEm < fim, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<RespostaUsuario>> GetUltimasAsync(Guid usuarioId, int quantidade, CancellationToken cancellationToken = default)
+    {
+        return await Context.RespostasUsuario
+            .AsNoTracking()
+            .Where(r => r.UsuarioId == usuarioId)
+            .OrderByDescending(r => r.CriadoEm)
+            .Take(quantidade)
+            .ToListAsync(cancellationToken);
+    }
 }

@@ -39,6 +39,26 @@ public interface IRespostaUsuarioRepository : IRepository<RespostaUsuario, Guid>
     /// <param name="cancellationToken">Token de cancelamento da operação.</param>
     /// <returns>Lista somente leitura do histórico recente, limitado por disciplina.</returns>
     Task<IReadOnlyList<RespostaDisciplina>> GetHistoricoPorDisciplinaAsync(Guid usuarioId, int limitePorDisciplina, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Conta quantas respostas o usuário registrou no dia informado (calendário UTC). Usado pelo
+    /// endpoint agregador da Home (RF de tela inicial).
+    /// </summary>
+    /// <param name="usuarioId">Identificador do usuário.</param>
+    /// <param name="dia">Dia (UTC) a contar.</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+    /// <returns>Quantidade de respostas registradas no dia.</returns>
+    Task<int> ContarRespostasNoDiaAsync(Guid usuarioId, DateOnly dia, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Obtém as últimas respostas do usuário, mais recentes primeiro — usadas como "atividades
+    /// recentes" no endpoint agregador da Home.
+    /// </summary>
+    /// <param name="usuarioId">Identificador do usuário.</param>
+    /// <param name="quantidade">Quantidade máxima de respostas a retornar.</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+    /// <returns>Lista somente leitura das respostas mais recentes do usuário.</returns>
+    Task<IReadOnlyList<RespostaUsuario>> GetUltimasAsync(Guid usuarioId, int quantidade, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -2,6 +2,7 @@
 -- PostgreSQL database dump
 --
 
+
 -- Dumped from database version 17.10 (4f20678)
 -- Dumped by pg_dump version 17.10 (Debian 17.10-1.pgdg13+1)
 
@@ -61,6 +62,17 @@ CREATE TYPE public.origem_questao AS ENUM (
 
 
 --
+-- Name: status_contribuicao; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.status_contribuicao AS ENUM (
+    'aprovada',
+    'em_revisao',
+    'rejeitada'
+);
+
+
+--
 -- Name: status_item_plano; Type: TYPE; Schema: public; Owner: -
 --
 
@@ -79,6 +91,16 @@ CREATE TYPE public.status_questao AS ENUM (
     'em_revisao',
     'aprovada',
     'rejeitada'
+);
+
+
+--
+-- Name: tipo_contribuicao; Type: TYPE; Schema: public; Owner: -
+--
+
+CREATE TYPE public.tipo_contribuicao AS ENUM (
+    'pdf',
+    'video'
 );
 
 
@@ -256,6 +278,16 @@ CREATE TABLE neon_auth.verification (
 
 
 --
+-- Name: __EFMigrationsHistory; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public."__EFMigrationsHistory" (
+    migration_id character varying(150) NOT NULL,
+    product_version character varying(32) NOT NULL
+);
+
+
+--
 -- Name: bancas; Type: TABLE; Schema: public; Owner: -
 --
 
@@ -291,6 +323,23 @@ CREATE TABLE public.chunks_conteudo (
     texto text NOT NULL,
     embedding public.vector(1024) NOT NULL,
     criado_em timestamp with time zone DEFAULT now() NOT NULL
+);
+
+
+--
+-- Name: contribuicoes_conteudo; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.contribuicoes_conteudo (
+    id uuid NOT NULL,
+    usuario_id uuid NOT NULL,
+    topico_id uuid NOT NULL,
+    tipo public.tipo_contribuicao NOT NULL,
+    link text NOT NULL,
+    status public.status_contribuicao NOT NULL,
+    criado_em timestamp with time zone NOT NULL,
+    moderado_por uuid,
+    moderado_em timestamp with time zone
 );
 
 
@@ -440,6 +489,16 @@ CREATE TABLE public.questoes (
     ano integer,
     orgao character varying(255),
     CONSTRAINT chk_alternativas_multipla CHECK ((((tipo = 'multipla_escolha'::public.tipo_questao) AND (alternativas IS NOT NULL)) OR ((tipo = 'certo_errado'::public.tipo_questao) AND (alternativas IS NULL))))
+);
+
+
+--
+-- Name: reputacao_contribuicao; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.reputacao_contribuicao (
+    usuario_id uuid NOT NULL,
+    pontos_contribuicao integer NOT NULL
 );
 
 
@@ -725,6 +784,30 @@ ALTER TABLE ONLY public.medalhas
 
 
 --
+-- Name: __EFMigrationsHistory pk___ef_migrations_history; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public."__EFMigrationsHistory"
+    ADD CONSTRAINT pk___ef_migrations_history PRIMARY KEY (migration_id);
+
+
+--
+-- Name: contribuicoes_conteudo pk_contribuicoes_conteudo; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contribuicoes_conteudo
+    ADD CONSTRAINT pk_contribuicoes_conteudo PRIMARY KEY (id);
+
+
+--
+-- Name: reputacao_contribuicao pk_reputacao_contribuicao; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.reputacao_contribuicao
+    ADD CONSTRAINT pk_reputacao_contribuicao PRIMARY KEY (usuario_id);
+
+
+--
 -- Name: plano_itens plano_itens_pkey; Type: CONSTRAINT; Schema: public; Owner: -
 --
 
@@ -977,6 +1060,27 @@ CREATE INDEX idx_topicos_edital ON public.topicos USING btree (edital_id);
 
 
 --
+-- Name: ix_contribuicoes_conteudo_moderado_por; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_contribuicoes_conteudo_moderado_por ON public.contribuicoes_conteudo USING btree (moderado_por);
+
+
+--
+-- Name: ix_contribuicoes_conteudo_topico_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_contribuicoes_conteudo_topico_id ON public.contribuicoes_conteudo USING btree (topico_id);
+
+
+--
+-- Name: ix_contribuicoes_conteudo_usuario_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX ix_contribuicoes_conteudo_usuario_id ON public.contribuicoes_conteudo USING btree (usuario_id);
+
+
+--
 -- Name: account account_userId_fkey; Type: FK CONSTRAINT; Schema: neon_auth; Owner: -
 --
 
@@ -1078,6 +1182,30 @@ ALTER TABLE ONLY public.edital_peso_disciplina
 
 ALTER TABLE ONLY public.edital_peso_disciplina
     ADD CONSTRAINT edital_peso_disciplina_edital_origem_id_fkey FOREIGN KEY (edital_origem_id) REFERENCES public.editais(id);
+
+
+--
+-- Name: contribuicoes_conteudo fk_contribuicoes_conteudo_topicos_topico_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contribuicoes_conteudo
+    ADD CONSTRAINT fk_contribuicoes_conteudo_topicos_topico_id FOREIGN KEY (topico_id) REFERENCES public.topicos(id) ON DELETE CASCADE;
+
+
+--
+-- Name: contribuicoes_conteudo fk_contribuicoes_conteudo_usuarios_moderado_por; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contribuicoes_conteudo
+    ADD CONSTRAINT fk_contribuicoes_conteudo_usuarios_moderado_por FOREIGN KEY (moderado_por) REFERENCES public.usuarios(id);
+
+
+--
+-- Name: contribuicoes_conteudo fk_contribuicoes_conteudo_usuarios_usuario_id; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.contribuicoes_conteudo
+    ADD CONSTRAINT fk_contribuicoes_conteudo_usuarios_usuario_id FOREIGN KEY (usuario_id) REFERENCES public.usuarios(id) ON DELETE CASCADE;
 
 
 --
@@ -1281,6 +1409,16 @@ ALTER TABLE ONLY public.usuario_medalhas
 
 
 --
+-- Dado de referência semeado pela migration CriaContribuicaoReputacao (InsertData) — pg_dump
+-- --schema-only não inclui dados, então esta linha é mantida manualmente aqui pra o schema de teste
+-- (Testcontainers) ficar fiel ao que uma migration real produz numa instalação nova.
+--
+
+INSERT INTO public.medalhas (id, nome, criterio) VALUES ('9f9c9b0e-0f3d-4a3b-9b0e-0f3d4a3b9b0e', 'Primeira Contribuição Aprovada', 'Ter uma contribuição de conteúdo aprovada por um moderador.');
+
+
+--
 -- PostgreSQL database dump complete
 --
+
 

@@ -6,10 +6,8 @@ using Forja.Domain.Questoes;
 using Forja.Domain.Usuarios;
 using Forja.Domain.Conteudo;
 using Forja.Infrastructure.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 
 namespace Forja.Infrastructure;
 
@@ -29,16 +27,7 @@ public static class DependencyInjection
         var connectionString = NeonConnectionStringConverter.ToNpgsqlConnectionString(
             configuration.GetConnectionString("ForjaDb")!);
 
-        services.AddDbContext<ForjaDbContext>(options => options
-            .UseNpgsql(connectionString, npgsql => npgsql
-                .MapEnum<NivelUsuario>("nivel_usuario")
-                .MapEnum<TipoQuestao>("tipo_questao")
-                .MapEnum<StatusQuestao>("status_questao")
-                .MapEnum<OrigemQuestao>("origem_questao")
-                .MapEnum<TipoFonte>("tipo_fonte")
-                .MapEnum<StatusItemPlano>("status_item_plano")
-                .UseVector())
-            .UseSnakeCaseNamingConvention());
+        services.AddDbContext<ForjaDbContext>(options => ForjaDbContextOptionsConfigurator.Configure(options, connectionString));
 
         services.AddScoped(typeof(IRepository<,>), typeof(Repository<,>));
         services.AddScoped<IUsuarioRepository, UsuarioRepository>();

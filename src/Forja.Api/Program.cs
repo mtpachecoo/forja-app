@@ -6,8 +6,10 @@ using Forja.Application.Desempenho;
 using Forja.Application.Duvidas;
 using Forja.Application.Estudo;
 using Forja.Application.Gamificacao;
+using Forja.Application.Onboarding;
 using Forja.Application.Questoes;
 using Forja.Application.Usuarios;
+using Forja.Domain.Usuarios;
 using Forja.Infrastructure;
 using Forja.Infrastructure.Ia;
 
@@ -31,6 +33,7 @@ builder.Services.AddScoped<IRevisaoEspacadaService, RevisaoEspacadaService>();
 builder.Services.AddScoped<IStreakService, StreakService>();
 builder.Services.AddScoped<IPontuacaoService, PontuacaoService>();
 builder.Services.AddScoped<IAnaliseDesempenhoService, AnaliseDesempenhoService>();
+builder.Services.AddScoped<IOnboardingService, OnboardingService>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -209,6 +212,29 @@ app.MapPost("/plano/recriar", async (
         usuario.Nivel,
         cancellationToken);
     return Results.Ok(RecriarPlanoResponse.De(resultado));
+}).RequireAuthorization();
+
+app.MapPost("/onboarding", async (
+    OnboardingRequest request,
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IOnboardingService onboardingService,
+    CancellationToken cancellationToken) =>
+{
+    if (!Enum.TryParse<NivelUsuario>(request.Nivel, ignoreCase: true, out var nivel))
+    {
+        throw new ArgumentException($"Nível '{request.Nivel}' inválido.");
+    }
+
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var resultado = await onboardingService.CompletarOnboardingAsync(
+        usuario.Id,
+        request.CarreiraId,
+        request.TempoDisponivelMinDia,
+        nivel,
+        cancellationToken);
+
+    return Results.Ok(OnboardingResponse.De(resultado));
 }).RequireAuthorization();
 
 app.Run();

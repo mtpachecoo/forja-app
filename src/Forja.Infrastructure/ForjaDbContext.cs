@@ -1,5 +1,6 @@
 using Forja.Domain.Catalogo;
 using Forja.Domain.Conteudo;
+using Forja.Domain.Contribuicao;
 using Forja.Domain.Estudo;
 using Forja.Domain.Gamificacao;
 using Forja.Domain.Questoes;
@@ -88,6 +89,12 @@ public class ForjaDbContext : DbContext
     /// </summary>
     public DbSet<NeonAuthUser> NeonAuthUsers => Set<NeonAuthUser>();
 
+    /// <summary>Contribuições de conteúdo externo submetidas por usuários.</summary>
+    public DbSet<ContribuicaoConteudo> ContribuicoesConteudo => Set<ContribuicaoConteudo>();
+
+    /// <summary>Reputação por contribuição de conteúdo, distinta de <see cref="Pontuacao"/>.</summary>
+    public DbSet<ReputacaoContribuicao> ReputacoesContribuicao => Set<ReputacaoContribuicao>();
+
     /// <inheritdoc />
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -97,6 +104,8 @@ public class ForjaDbContext : DbContext
         modelBuilder.HasPostgresEnum<OrigemQuestao>("origem_questao");
         modelBuilder.HasPostgresEnum<TipoFonte>("tipo_fonte");
         modelBuilder.HasPostgresEnum<StatusItemPlano>("status_item_plano");
+        modelBuilder.HasPostgresEnum<TipoContribuicao>("tipo_contribuicao");
+        modelBuilder.HasPostgresEnum<StatusContribuicao>("status_contribuicao");
 
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ForjaDbContext).Assembly);
 

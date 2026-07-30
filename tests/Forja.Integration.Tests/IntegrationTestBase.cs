@@ -1,4 +1,5 @@
 using Forja.Domain.Catalogo;
+using Forja.Domain.Gamificacao;
 using Forja.Domain.Usuarios;
 using Forja.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -103,6 +104,15 @@ public abstract class IntegrationTestBase
             """
             TRUNCATE TABLE neon_auth."user", public.carreiras, public.bancas, public.disciplinas, public.editais, public.medalhas
             RESTART IDENTITY CASCADE
+            """);
+
+        // medalhas inclui dado de referência semeado por migration (ver
+        // Forja.Domain.Gamificacao.MedalhasConhecidas) — não é dado de teste, então precisa sobreviver
+        // ao TRUNCATE acima, igual sobreviveria a qualquer limpeza em produção.
+        await context.Database.ExecuteSqlInterpolatedAsync(
+            $"""
+            INSERT INTO public.medalhas (id, nome, criterio)
+            VALUES ({MedalhasConhecidas.PrimeiraContribuicaoAprovadaId}, 'Primeira Contribuição Aprovada', 'Ter uma contribuição de conteúdo aprovada por um moderador.')
             """);
     }
 

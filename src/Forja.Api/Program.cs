@@ -5,11 +5,14 @@ using Forja.Api.ExceptionHandling;
 using Forja.Application.Desempenho;
 using Forja.Application.Duvidas;
 using Forja.Application.Estudo;
+using Forja.Application.Common;
+using Forja.Application.Contribuicao;
 using Forja.Application.Gamificacao;
 using Forja.Application.Home;
 using Forja.Application.Onboarding;
 using Forja.Application.Questoes;
 using Forja.Application.Usuarios;
+using Forja.Domain.Contribuicao;
 using Forja.Domain.Usuarios;
 using Forja.Infrastructure;
 using Forja.Infrastructure.Ia;
@@ -36,6 +39,8 @@ builder.Services.AddScoped<IPontuacaoService, PontuacaoService>();
 builder.Services.AddScoped<IAnaliseDesempenhoService, AnaliseDesempenhoService>();
 builder.Services.AddScoped<IOnboardingService, OnboardingService>();
 builder.Services.AddScoped<IHomeService, HomeService>();
+builder.Services.AddScoped<IContribuicaoService, ContribuicaoService>();
+builder.Services.AddSingleton<IAdminAuthorizer, ConfigAdminAuthorizer>();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
@@ -249,6 +254,68 @@ app.MapGet("/home", async (
     var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
     var resumo = await homeService.ObterResumoAsync(usuario.Id, atividades, cancellationToken);
     return Results.Ok(HomeResponse.De(resumo));
+}).RequireAuthorization();
+
+app.MapPost("/contribuicoes", async (
+    ContribuicaoRequest request,
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IContribuicaoService contribuicaoService,
+    CancellationToken cancellationToken) =>
+{
+    if (!Enum.TryParse<TipoContribuicao>(request.Tipo, ignoreCase: true, out var tipo))
+    {
+        throw new ArgumentException($"Tipo '{request.Tipo}' inválido.");
+    }
+
+    var usuario = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var contribuicao = await contribuicaoService.SubmeterAsync(usuario.Id, request.TopicoId, tipo, request.Link, cancellationToken);
+
+    return Results.Ok(ContribuicaoResponse.De(contribuicao));
+}).RequireAuthorization();
+
+app.MapGet("/topicos/{id:guid}/contribuicoes", async (
+    Guid id,
+    IContribuicaoService contribuicaoService,
+    CancellationToken cancellationToken,
+    int skip = 0,
+    int take = 50) =>
+{
+    var contribuicoes = await contribuicaoService.ListarAprovadasPorTopicoAsync(id, skip, take, cancellationToken);
+    return Results.Ok(contribuicoes.Select(ContribuicaoResponse.De));
+}).RequireAuthorization();
+
+app.MapPost("/admin/contribuicoes/{id:guid}/aprovar", async (
+    Guid id,
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IContribuicaoService contribuicaoService,
+    CancellationToken cancellationToken) =>
+{
+    var moderador = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var contribuicao = await contribuicaoService.AprovarAsync(id, moderador.Id, cancellationToken);
+    return Results.Ok(ContribuicaoResponse.De(contribuicao));
+}).RequireAuthorization();
+
+app.MapPost("/admin/contribuicoes/{id:guid}/rejeitar", async (
+    Guid id,
+    ClaimsPrincipal user,
+    IUsuarioService usuarioService,
+    IContribuicaoService contribuicaoService,
+    CancellationToken cancellationToken) =>
+{
+    var moderador = await usuarioService.ResolverUsuarioAutenticadoAsync(user, cancellationToken);
+    var contribuicao = await contribuicaoService.RejeitarAsync(id, moderador.Id, cancellationToken);
+    return Results.Ok(ContribuicaoResponse.De(contribuicao));
+}).RequireAuthorization();
+
+app.MapGet("/usuarios/{id:guid}/perfil", async (
+    Guid id,
+    IPerfilPublicoReadStore perfilPublicoReadStore,
+    CancellationToken cancellationToken) =>
+{
+    var perfil = await perfilPublicoReadStore.ObterPorUsuarioIdAsync(id, cancellationToken);
+    return perfil is null ? Results.NotFound() : Results.Ok(PerfilPublicoResponse.De(perfil));
 }).RequireAuthorization();
 
 app.Run();

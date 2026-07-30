@@ -1,10 +1,12 @@
 using Forja.Domain.Catalogo;
 using Forja.Domain.Common;
+using Forja.Domain.Contribuicao;
 using Forja.Domain.Estudo;
 using Forja.Domain.Gamificacao;
 using Forja.Domain.Questoes;
 using Forja.Domain.Usuarios;
 using Forja.Domain.Conteudo;
+using Forja.Infrastructure.ReadStores;
 using Forja.Infrastructure.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -46,6 +48,11 @@ public static class DependencyInjection
         services.AddScoped<IDisciplinaRepository, DisciplinaRepository>();
         services.AddScoped<ITopicoRepository, TopicoRepository>();
         services.AddScoped<IEditalPesoDisciplinaRepository, EditalPesoDisciplinaRepository>();
+        services.AddScoped<IContribuicaoConteudoRepository, ContribuicaoConteudoRepository>();
+        services.AddScoped<IReputacaoContribuicaoRepository, ReputacaoContribuicaoRepository>();
+        services.AddScoped<IMedalhaRepository, MedalhaRepository>();
+        services.AddScoped<IUsuarioMedalhaRepository, UsuarioMedalhaRepository>();
+        services.AddScoped<IPerfilPublicoReadStore, PerfilPublicoReadStore>();
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         return services;

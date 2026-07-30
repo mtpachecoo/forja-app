@@ -32,6 +32,7 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
         {
             NotFoundException notFound => (StatusCodes.Status404NotFound, notFound.Message),
             UsuarioNaoAutenticadoException => (StatusCodes.Status401Unauthorized, "Não autenticado."),
+            NaoAutorizadoException naoAutorizado => (StatusCodes.Status403Forbidden, naoAutorizado.Message),
             ArgumentException argumento => (StatusCodes.Status400BadRequest, argumento.Message),
             _ => (StatusCodes.Status500InternalServerError, "Erro interno."),
         };

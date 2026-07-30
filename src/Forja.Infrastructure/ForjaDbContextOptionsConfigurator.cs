@@ -1,4 +1,5 @@
 using Forja.Domain.Conteudo;
+using Forja.Domain.Contribuicao;
 using Forja.Domain.Estudo;
 using Forja.Domain.Questoes;
 using Forja.Domain.Usuarios;
@@ -28,6 +29,8 @@ internal static class ForjaDbContextOptionsConfigurator
                 .MapEnum<OrigemQuestao>("origem_questao")
                 .MapEnum<TipoFonte>("tipo_fonte")
                 .MapEnum<StatusItemPlano>("status_item_plano")
+                .MapEnum<TipoContribuicao>("tipo_contribuicao")
+                .MapEnum<StatusContribuicao>("status_contribuicao")
                 .UseVector())
             .UseSnakeCaseNamingConvention();
     }

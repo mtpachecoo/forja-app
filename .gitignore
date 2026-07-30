@@ -16,6 +16,10 @@ tools/auth-test/
 .idea/
 .vscode/
 
+## Cobertura de testes (gerada por coverage.runsettings + reportgenerator)
+coverage-results/
+coverage-report/
+
 ## OS
 .DS_Store
 Thumbs.db

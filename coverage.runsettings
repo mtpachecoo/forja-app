@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>opencover</Format>
+
+          <!-- IncludeTestAssembly=false (o padrão) já mantém os próprios assemblies de teste fora
+               da instrumentação — os filtros abaixo cobrem código gerado/infra que não deve contar
+               pra métricas de risco (Migrations do EF, designers, código com atributo de geração). -->
+          <ExcludeByFile>
+            **/Migrations/**/*.cs,
+            **/*.Designer.cs,
+            **/*.g.cs,
+            **/*.g.i.cs,
+            **/obj/**/*.cs
+          </ExcludeByFile>
+
+          <ExcludeByAttribute>
+            Obsolete,
+            GeneratedCodeAttribute,
+            CompilerGeneratedAttribute,
+            ExcludeFromCodeCoverageAttribute
+          </ExcludeByAttribute>
+
+          <Exclude>
+            [*.Tests]*,
+            [*.Tests.*]*,
+            [*]*.Migrations.*
+          </Exclude>
+
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

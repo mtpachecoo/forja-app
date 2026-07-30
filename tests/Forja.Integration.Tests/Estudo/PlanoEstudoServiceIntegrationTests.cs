@@ -1,3 +1,4 @@
+using Forja.Application.Common;
 using Forja.Application.Estudo;
 using Forja.Domain.Catalogo;
 using Forja.Domain.Common;
@@ -9,8 +10,6 @@ using Forja.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
 using Moq;
 
 namespace Forja.Integration.Tests.Estudo;
@@ -28,7 +27,7 @@ public class PlanoEstudoServiceIntegrationTests : IntegrationTestBase
     [TestInitialize]
     public async Task TestInitialize() => await LimparBancoAsync();
 
-    private static PlanoEstudoService CriarServico(IServiceScope escopo, IChatCompletionService chatCompletionService) => new(
+    private static PlanoEstudoService CriarServico(IServiceScope escopo, IGeradorDeRespostaChat geradorDeRespostaChat) => new(
         escopo.ServiceProvider.GetRequiredService<IPlanoEstudoRepository>(),
         escopo.ServiceProvider.GetRequiredService<IPlanoItemRepository>(),
         escopo.ServiceProvider.GetRequiredService<IEditalRepository>(),
@@ -41,19 +40,19 @@ public class PlanoEstudoServiceIntegrationTests : IntegrationTestBase
             escopo.ServiceProvider.GetRequiredService<IDisciplinaRepository>(),
             escopo.ServiceProvider.GetRequiredService<IChunkConteudoRepository>(),
             escopo.ServiceProvider.GetRequiredService<IQuestaoRepository>(),
-            Mock.Of<IChatCompletionService>(), // sem chunks/questões aprovadas cadastrados, cai no caso (d) — nunca chama o LLM.
+            Mock.Of<IGeradorDeRespostaChat>(), // sem chunks/questões aprovadas cadastrados, cai no caso (d) — nunca chama o LLM.
             escopo.ServiceProvider.GetRequiredService<IUnitOfWork>()),
-        chatCompletionService,
+        geradorDeRespostaChat,
         escopo.ServiceProvider.GetRequiredService<IUnitOfWork>());
 
-    private static Mock<IChatCompletionService> CriarMockDeAlocacao(params Guid[] topicoIds)
+    private static Mock<IGeradorDeRespostaChat> CriarMockDeAlocacao(params Guid[] topicoIds)
     {
         var itens = string.Join(",", topicoIds.Select(id => $$"""{"topicoId": "{{id}}", "tempoAlocadoMin": 30}"""));
         var json = $$"""{"itens": [{{itens}}]}""";
 
-        var mock = new Mock<IChatCompletionService>();
-        mock.Setup(c => c.GetChatMessageContentsAsync(It.IsAny<ChatHistory>(), It.IsAny<PromptExecutionSettings>(), It.IsAny<Kernel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new ChatMessageContent(AuthorRole.Assistant, json)]);
+        var mock = new Mock<IGeradorDeRespostaChat>();
+        mock.Setup(c => c.GerarRespostaAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(json);
         return mock;
     }
 

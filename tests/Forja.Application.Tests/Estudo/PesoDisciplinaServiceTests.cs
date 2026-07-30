@@ -1,11 +1,10 @@
+using Forja.Application.Common;
 using Forja.Application.Estudo;
 using Forja.Domain.Catalogo;
 using Forja.Domain.Common;
 using Forja.Domain.Conteudo;
 using Forja.Domain.Questoes;
 using FluentAssertions;
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
 using Moq;
 
 namespace Forja.Application.Tests.Estudo;
@@ -19,7 +18,7 @@ public class PesoDisciplinaServiceTests
     private readonly Mock<IDisciplinaRepository> _disciplinaRepository = new();
     private readonly Mock<IChunkConteudoRepository> _chunkRepository = new();
     private readonly Mock<IQuestaoRepository> _questaoRepository = new();
-    private readonly Mock<IChatCompletionService> _chatCompletionService = new();
+    private readonly Mock<IGeradorDeRespostaChat> _geradorDeRespostaChat = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly PesoDisciplinaService _service;
 
@@ -32,7 +31,7 @@ public class PesoDisciplinaServiceTests
             _disciplinaRepository.Object,
             _chunkRepository.Object,
             _questaoRepository.Object,
-            _chatCompletionService.Object,
+            _geradorDeRespostaChat.Object,
             _unitOfWork.Object);
     }
 
@@ -88,9 +87,9 @@ public class PesoDisciplinaServiceTests
         const string jsonResposta = """
             {"encontrado": true, "disciplinas": [{"nome": "Direito Constitucional", "peso": 20}, {"nome": "Direito Administrativo", "peso": 10}]}
             """;
-        _chatCompletionService
-            .Setup(c => c.GetChatMessageContentsAsync(It.IsAny<ChatHistory>(), It.IsAny<PromptExecutionSettings>(), It.IsAny<Kernel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new ChatMessageContent(AuthorRole.Assistant, jsonResposta)]);
+        _geradorDeRespostaChat
+            .Setup(c => c.GerarRespostaAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jsonResposta);
 
         var resultado = await _service.ObterOuCalcularPesosAsync(editalId);
 

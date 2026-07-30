@@ -228,17 +228,7 @@ public class PlanoEstudoService : IPlanoEstudoService
             .Replace("__TEMPO_DISPONIVEL__", tempoDisponivelMinDia.ToString())
             .Replace("__INFO_PROVA__", infoProva);
 
-        var historico = new ChatHistory();
-        historico.AddUserMessage(prompt);
-
-        var respostas = await _chatCompletionService.GetChatMessageContentsAsync(historico, cancellationToken: cancellationToken);
-        var textoResposta = respostas[0].Content;
-        if (string.IsNullOrWhiteSpace(textoResposta))
-        {
-            return [];
-        }
-
-        var plano = IaJsonResponseParser.TentarDesserializar<PlanoResponse>(textoResposta);
+        var plano = await _geradorDeRespostaChat.PedirRespostaEstruturadaAsync<PlanoResponse>(prompt, cancellationToken: cancellationToken);
         if (plano is null)
         {
             return [];

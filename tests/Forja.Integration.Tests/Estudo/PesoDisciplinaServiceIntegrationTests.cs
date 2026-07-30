@@ -1,3 +1,4 @@
+using Forja.Application.Common;
 using Forja.Application.Estudo;
 using Forja.Domain.Catalogo;
 using Forja.Domain.Common;
@@ -7,8 +8,6 @@ using Forja.Infrastructure;
 using FluentAssertions;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
 using Moq;
 
 namespace Forja.Integration.Tests.Estudo;
@@ -27,14 +26,14 @@ public class PesoDisciplinaServiceIntegrationTests : IntegrationTestBase
     [TestInitialize]
     public async Task TestInitialize() => await LimparBancoAsync();
 
-    private static PesoDisciplinaService CriarServico(IServiceScope escopo, IChatCompletionService chatCompletionService) => new(
+    private static PesoDisciplinaService CriarServico(IServiceScope escopo, IGeradorDeRespostaChat geradorDeRespostaChat) => new(
         escopo.ServiceProvider.GetRequiredService<IEditalPesoDisciplinaRepository>(),
         escopo.ServiceProvider.GetRequiredService<IEditalRepository>(),
         escopo.ServiceProvider.GetRequiredService<ITopicoRepository>(),
         escopo.ServiceProvider.GetRequiredService<IDisciplinaRepository>(),
         escopo.ServiceProvider.GetRequiredService<IChunkConteudoRepository>(),
         escopo.ServiceProvider.GetRequiredService<IQuestaoRepository>(),
-        chatCompletionService,
+        geradorDeRespostaChat,
         escopo.ServiceProvider.GetRequiredService<IUnitOfWork>());
 
     [TestMethod]
@@ -61,12 +60,12 @@ public class PesoDisciplinaServiceIntegrationTests : IntegrationTestBase
         await context.SaveChangesAsync();
 
         var jsonResposta = $$"""{"encontrado": true, "disciplinas": [{"nome": "{{disciplina.Nome}}", "peso": 20}]}""";
-        var chatCompletionService = new Mock<IChatCompletionService>();
-        chatCompletionService
-            .Setup(c => c.GetChatMessageContentsAsync(It.IsAny<ChatHistory>(), It.IsAny<PromptExecutionSettings>(), It.IsAny<Kernel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new ChatMessageContent(AuthorRole.Assistant, jsonResposta)]);
+        var geradorDeRespostaChat = new Mock<IGeradorDeRespostaChat>();
+        geradorDeRespostaChat
+            .Setup(c => c.GerarRespostaAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jsonResposta);
 
-        var servico = CriarServico(escopo, chatCompletionService.Object);
+        var servico = CriarServico(escopo, geradorDeRespostaChat.Object);
         var resultado = await servico.ObterOuCalcularPesosAsync(edital.Id);
 
         resultado.Should().ContainSingle(p => p.DisciplinaId == disciplina.Id && p.Peso == 20m);
@@ -107,7 +106,7 @@ public class PesoDisciplinaServiceIntegrationTests : IntegrationTestBase
         await context.SaveChangesAsync();
 
         // Sem chunk pro edital novo (caso a falha) e sem questão aprovada pra carreira (caso b falha).
-        var servico = CriarServico(escopo, Mock.Of<IChatCompletionService>());
+        var servico = CriarServico(escopo, Mock.Of<IGeradorDeRespostaChat>());
         var resultado = await servico.ObterOuCalcularPesosAsync(editalNovo.Id);
 
         resultado.Should().ContainSingle(p => p.DisciplinaId == disciplina.Id && p.Peso == 15m);

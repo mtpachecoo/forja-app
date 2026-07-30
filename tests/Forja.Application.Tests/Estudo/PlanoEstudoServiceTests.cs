@@ -1,11 +1,10 @@
+using Forja.Application.Common;
 using Forja.Application.Estudo;
 using Forja.Domain.Catalogo;
 using Forja.Domain.Common;
 using Forja.Domain.Estudo;
 using Forja.Domain.Usuarios;
 using FluentAssertions;
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.ChatCompletion;
 using Moq;
 
 namespace Forja.Application.Tests.Estudo;
@@ -19,7 +18,7 @@ public class PlanoEstudoServiceTests
     private readonly Mock<ITopicoRepository> _topicoRepository = new();
     private readonly Mock<IDisciplinaRepository> _disciplinaRepository = new();
     private readonly Mock<IPesoDisciplinaService> _pesoDisciplinaService = new();
-    private readonly Mock<IChatCompletionService> _chatCompletionService = new();
+    private readonly Mock<IGeradorDeRespostaChat> _geradorDeRespostaChat = new();
     private readonly Mock<IUnitOfWork> _unitOfWork = new();
     private readonly PlanoEstudoService _service;
 
@@ -32,7 +31,7 @@ public class PlanoEstudoServiceTests
             _topicoRepository.Object,
             _disciplinaRepository.Object,
             _pesoDisciplinaService.Object,
-            _chatCompletionService.Object,
+            _geradorDeRespostaChat.Object,
             _unitOfWork.Object);
     }
 
@@ -41,9 +40,9 @@ public class PlanoEstudoServiceTests
 
     private void ConfigurarRespostaLlm(string json)
     {
-        _chatCompletionService
-            .Setup(c => c.GetChatMessageContentsAsync(It.IsAny<ChatHistory>(), It.IsAny<PromptExecutionSettings>(), It.IsAny<Kernel>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync([new ChatMessageContent(AuthorRole.Assistant, json)]);
+        _geradorDeRespostaChat
+            .Setup(c => c.GerarRespostaAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(json);
     }
 
     [TestMethod]
@@ -166,7 +165,7 @@ public class PlanoEstudoServiceTests
 
         var acao = () => _service.ObterOuGerarPlanoAtualAsync(usuarioId, carreiraId, 60, NivelUsuario.Iniciante);
 
-        await acao.Should().ThrowAsync<Forja.Application.Common.NotFoundException>();
+        await acao.Should().ThrowAsync<NotFoundException>();
     }
 
     [TestMethod]

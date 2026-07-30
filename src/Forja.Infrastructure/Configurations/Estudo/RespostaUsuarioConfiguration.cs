@@ -17,6 +17,16 @@ public class RespostaUsuarioConfiguration : IEntityTypeConfiguration<RespostaUsu
         builder.ToTable("respostas_usuario");
         builder.HasKey(r => r.Id);
 
+        // Índice composto pra ExisteRespostaPontuadaAsync (usuario_id + questao_id) — já existe no
+        // Neon desde antes da adoção de EF Core Migrations (criado fora do fluxo de migrations, como
+        // edital_peso_disciplina), nunca tinha sido mapeado no modelo. Mapear pelo nome real evita que
+        // o dotnet ef tente recriá-lo com outro nome ou dropar índices de FK que nunca existiram de
+        // fato (o baseline assumia por convenção, mas nunca foram criados — Up() do InicioBaseline
+        // ficou vazio de propósito). Não único: múltiplas respostas por (usuario, questão) são
+        // esperadas (tentativas erradas, revisões) — só a primeira correta pontua, é regra de negócio,
+        // não constraint de dado.
+        builder.HasIndex(r => new { r.UsuarioId, r.QuestaoId }).HasDatabaseName("idx_respostas_usuario_questao");
+
         builder.HasOne<Usuario>()
             .WithMany()
             .HasForeignKey(r => r.UsuarioId)

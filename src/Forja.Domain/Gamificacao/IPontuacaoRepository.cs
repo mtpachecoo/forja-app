@@ -27,4 +27,20 @@ public interface IPontuacaoRepository : IRepository<Pontuacao, Guid>
         int skip,
         int take,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Incrementa a pontuação do usuário atomicamente no próprio Postgres (upsert
+    /// <c>INSERT ... ON CONFLICT DO UPDATE</c>), sem passar por ler→somar em memória→salvar.
+    /// Evita a condição de corrida clássica de "lost update": duas chamadas concorrentes pro mesmo
+    /// usuário (ex.: respostas quase simultâneas) não podem mais se sobrescrever, porque a soma
+    /// acontece dentro da própria instrução SQL, não em memória entre uma leitura e um save separados.
+    /// Aplica a mesma regra de <see cref="Pontuacao.RegistrarPontos"/> (acumula na semana atual, ou
+    /// reinicia <see cref="Pontuacao.PontosSemanaAtual"/> se a semana mudou).
+    /// </summary>
+    /// <param name="usuarioId">Identificador do usuário.</param>
+    /// <param name="pontos">Pontos a adicionar.</param>
+    /// <param name="hoje">Data em que os pontos foram ganhos.</param>
+    /// <param name="cancellationToken">Token de cancelamento da operação.</param>
+    /// <returns>A pontuação já atualizada, refletindo o estado gravado no banco.</returns>
+    Task<Pontuacao> IncrementarPontosAsync(Guid usuarioId, int pontos, DateOnly hoje, CancellationToken cancellationToken = default);
 }

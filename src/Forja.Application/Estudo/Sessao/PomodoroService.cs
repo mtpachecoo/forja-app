@@ -87,19 +87,10 @@ public class PomodoroService : IPomodoroService
         {
             pomodoro.PontosConcedidos = PontosPorPomodoroConcluido;
 
-            var pontuacaoExistente = await _pontuacaoRepository.GetByIdAsync(usuarioId, cancellationToken);
-            var pontuacaoJaExistia = pontuacaoExistente is not null;
-            pontuacaoAtualizada = pontuacaoExistente ?? new Pontuacao { UsuarioId = usuarioId };
-            pontuacaoAtualizada.RegistrarPontos(PontosPorPomodoroConcluido, DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime));
-
-            if (pontuacaoJaExistia)
-            {
-                _pontuacaoRepository.Update(pontuacaoAtualizada);
-            }
-            else
-            {
-                await _pontuacaoRepository.AddAsync(pontuacaoAtualizada, cancellationToken);
-            }
+            // Incremento atômico direto no Postgres (upsert) — mesmo padrão de RespostaService, mesma
+            // razão: pomodoros concorrentes finalizando pro mesmo usuário não podem mais se sobrescrever.
+            pontuacaoAtualizada = await _pontuacaoRepository.IncrementarPontosAsync(
+                usuarioId, PontosPorPomodoroConcluido, DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime), cancellationToken);
         }
 
         _pomodoroRepository.Update(pomodoro);

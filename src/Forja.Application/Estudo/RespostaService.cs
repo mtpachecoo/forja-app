@@ -76,26 +76,21 @@ public class RespostaService : IRespostaService
 
         await _respostaRepository.AddAsync(resposta, cancellationToken);
 
-        var pontuacao = await _pontuacaoRepository.GetByIdAsync(usuarioId, cancellationToken);
-        if (pontua)
-        {
-            var pontuacaoJaExistia = pontuacao is not null;
-            pontuacao ??= new Pontuacao { UsuarioId = usuarioId };
-            pontuacao.RegistrarPontos(pontosConcedidos, DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime));
+        // Incremento atômico direto no Postgres (upsert), não ler->somar em memória->salvar — respostas
+        // concorrentes do mesmo usuário não podem mais se sobrescrever (ver IPontuacaoRepository.IncrementarPontosAsync).
+        // Troca consciente: diferente de AddAsync (só enfileirado, commitado junto com o resto no
+        // SaveChangesAsync do orquestrador), este INSERT/UPDATE executa e commita imediatamente, fora
+        // dessa transação — é o preço de ser atômico no banco em vez de no change tracker em memória.
+        // Se o SaveChangesAsync do orquestrador falhar depois (RespostaUsuario/RevisaoEspacada), o ponto
+        // já concedido não seria desfeito. Risco aceito: as únicas causas realistas de falha nesse ponto
+        // (FK de usuario_id/questao_id) já foram validadas momentos antes nesta mesma chamada.
+        var pontuacao = pontua
+            ? await _pontuacaoRepository.IncrementarPontosAsync(usuarioId, pontosConcedidos, DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime), cancellationToken)
+            : null;
 
-            if (pontuacaoJaExistia)
-            {
-                _pontuacaoRepository.Update(pontuacao);
-            }
-            else
-            {
-                await _pontuacaoRepository.AddAsync(pontuacao, cancellationToken);
-            }
-        }
-
-        // RN-010/RN-011/RN-012: resposta e pontuação são só enfileiradas aqui (AddAsync/Update) — quem
-        // persiste (IUnitOfWork.SaveChangesAsync) é o orquestrador (RegistrarRespostaComEfeitosService),
-        // numa única transação com a revisão espaçada.
+        // RN-010/RN-011/RN-012: resposta é só enfileirada aqui (AddAsync) — quem persiste
+        // (IUnitOfWork.SaveChangesAsync) é o orquestrador (RegistrarRespostaComEfeitosService), numa
+        // única transação com a revisão espaçada. Pontuação já foi persistida acima, atomicamente.
         return new RegistrarRespostaResultado(resposta, questao, pontuacao ?? new Pontuacao { UsuarioId = usuarioId });
     }
 }

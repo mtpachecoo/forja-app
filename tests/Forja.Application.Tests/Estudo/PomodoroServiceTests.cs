@@ -46,7 +46,9 @@ public class PomodoroServiceTests
         _pomodoroRepository.Setup(r => r.GetByIdAsync(pomodoroId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(new Pomodoro { Id = pomodoroId, SessaoId = sessaoId, IniciadoEm = DateTimeOffset.UtcNow.AddMinutes(-25) });
         _respostaRepository.Setup(r => r.ContarRespostasNoPomodoroAsync(pomodoroId, It.IsAny<CancellationToken>())).ReturnsAsync(3);
-        _pontuacaoRepository.Setup(r => r.GetByIdAsync(usuarioId, It.IsAny<CancellationToken>())).ReturnsAsync((Pontuacao?)null);
+        _pontuacaoRepository
+            .Setup(r => r.IncrementarPontosAsync(usuarioId, It.IsAny<int>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((Guid uid, int pontos, DateOnly _, CancellationToken _) => new Pontuacao { UsuarioId = uid, PontosTotal = pontos, PontosSemanaAtual = pontos });
 
         var resultado = await _service.FinalizarPomodoroAsync(usuarioId, sessaoId, pomodoroId);
 
@@ -55,7 +57,7 @@ public class PomodoroServiceTests
         resultado.Pontuacao.Should().NotBeNull();
         resultado.Pontuacao!.PontosTotal.Should().Be(resultado.Pomodoro.PontosConcedidos);
 
-        _pontuacaoRepository.Verify(r => r.AddAsync(It.IsAny<Pontuacao>(), It.IsAny<CancellationToken>()), Times.Once);
+        _pontuacaoRepository.Verify(r => r.IncrementarPontosAsync(usuarioId, resultado.Pomodoro.PontosConcedidos, It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Once);
         _unitOfWork.Verify(u => u.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -78,8 +80,7 @@ public class PomodoroServiceTests
         resultado.Pomodoro.PontosConcedidos.Should().Be(0);
         resultado.Pontuacao.Should().BeNull();
 
-        _pontuacaoRepository.Verify(r => r.AddAsync(It.IsAny<Pontuacao>(), It.IsAny<CancellationToken>()), Times.Never);
-        _pontuacaoRepository.Verify(r => r.Update(It.IsAny<Pontuacao>()), Times.Never);
+        _pontuacaoRepository.Verify(r => r.IncrementarPontosAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [TestMethod]

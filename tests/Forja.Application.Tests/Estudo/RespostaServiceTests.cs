@@ -42,8 +42,9 @@ public class RespostaServiceTests
             .ReturnsAsync(CriarQuestaoAprovada(questaoId));
         _respostaRepository.Setup(r => r.ExisteRespostaPontuadaAsync(usuarioId, questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _pontuacaoRepository.Setup(r => r.GetByIdAsync(usuarioId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Pontuacao?)null);
+        _pontuacaoRepository
+            .Setup(r => r.IncrementarPontosAsync(usuarioId, 10, It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Pontuacao { UsuarioId = usuarioId, PontosTotal = 10, PontosSemanaAtual = 10 });
 
         var resultado = await _service.RegistrarRespostaAsync(usuarioId, questaoId, "A", tempoRespostaMs: 10_000, pomodoroId: null, ehRevisao: false);
 
@@ -53,7 +54,7 @@ public class RespostaServiceTests
         resultado.Pontuacao.PontosTotal.Should().Be(10);
         resultado.Pontuacao.PontosSemanaAtual.Should().Be(10);
 
-        _pontuacaoRepository.Verify(r => r.AddAsync(It.Is<Pontuacao>(p => p.UsuarioId == usuarioId && p.PontosTotal == 10), It.IsAny<CancellationToken>()), Times.Once);
+        _pontuacaoRepository.Verify(r => r.IncrementarPontosAsync(usuarioId, 10, It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [TestMethod]
@@ -66,8 +67,6 @@ public class RespostaServiceTests
             .ReturnsAsync(CriarQuestaoAprovada(questaoId));
         _respostaRepository.Setup(r => r.ExisteRespostaPontuadaAsync(usuarioId, questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(true);
-        _pontuacaoRepository.Setup(r => r.GetByIdAsync(usuarioId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new Pontuacao { UsuarioId = usuarioId, PontosTotal = 10, PontosSemanaAtual = 10, SemanaReferencia = DateOnly.FromDateTime(DateTime.UtcNow) });
 
         var resultado = await _service.RegistrarRespostaAsync(usuarioId, questaoId, "A", tempoRespostaMs: 10_000, pomodoroId: null, ehRevisao: false);
 
@@ -75,8 +74,7 @@ public class RespostaServiceTests
         resultado.Resposta.Pontuada.Should().BeFalse();
         resultado.Resposta.PontosConcedidos.Should().Be(0);
 
-        _pontuacaoRepository.Verify(r => r.AddAsync(It.IsAny<Pontuacao>(), It.IsAny<CancellationToken>()), Times.Never);
-        _pontuacaoRepository.Verify(r => r.Update(It.IsAny<Pontuacao>()), Times.Never);
+        _pontuacaoRepository.Verify(r => r.IncrementarPontosAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [TestMethod]
@@ -89,8 +87,6 @@ public class RespostaServiceTests
             .ReturnsAsync(CriarQuestaoAprovada(questaoId));
         _respostaRepository.Setup(r => r.ExisteRespostaPontuadaAsync(usuarioId, questaoId, It.IsAny<CancellationToken>()))
             .ReturnsAsync(false);
-        _pontuacaoRepository.Setup(r => r.GetByIdAsync(usuarioId, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Pontuacao?)null);
 
         // Resposta correta, mas dada em menos de 5s (tempo mínimo) — deve ser tratada como chute.
         var resultado = await _service.RegistrarRespostaAsync(usuarioId, questaoId, "A", tempoRespostaMs: 2_000, pomodoroId: null, ehRevisao: false);
@@ -99,7 +95,7 @@ public class RespostaServiceTests
         resultado.Resposta.Pontuada.Should().BeFalse();
         resultado.Resposta.PontosConcedidos.Should().Be(0);
 
-        _pontuacaoRepository.Verify(r => r.AddAsync(It.IsAny<Pontuacao>(), It.IsAny<CancellationToken>()), Times.Never);
+        _pontuacaoRepository.Verify(r => r.IncrementarPontosAsync(It.IsAny<Guid>(), It.IsAny<int>(), It.IsAny<DateOnly>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [TestMethod]

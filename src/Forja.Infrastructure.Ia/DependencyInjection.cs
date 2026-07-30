@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using Forja.Application.Common;
 using Forja.Application.Duvidas;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -33,9 +34,11 @@ public static class DependencyInjection
             .AddGoogleAIGeminiChatCompletion(geminiModelo, geminiApiKey)
             .Build();
 
-        // Só o IChatCompletionService é registrado — nada em Forja.Application depende do Kernel em
-        // si (plugins/function-calling não são usados nesta fase); registrá-lo à toa ficaria morto.
+        // O IChatCompletionService fica só nesta montagem, injetado no SemanticKernelChatService —
+        // nada fora de Forja.Infrastructure.Ia enxerga o Kernel ou tipos do Semantic Kernel. Registrar
+        // o Kernel em si ficaria morto: plugins/function-calling não são usados nesta fase.
         services.AddSingleton(kernel.GetRequiredService<IChatCompletionService>());
+        services.AddSingleton<IGeradorDeRespostaChat, SemanticKernelChatService>();
 
         var voyageApiKey = configuration["Voyage:ApiKey"]
             ?? throw new InvalidOperationException("Configuração 'Voyage:ApiKey' não encontrada.");

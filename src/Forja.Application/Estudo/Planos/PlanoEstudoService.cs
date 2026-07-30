@@ -4,7 +4,6 @@ using Forja.Domain.Catalogo;
 using Forja.Domain.Common;
 using Forja.Domain.Estudo;
 using Forja.Domain.Usuarios;
-using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Forja.Application.Estudo;
 
@@ -19,7 +18,7 @@ public class PlanoEstudoService : IPlanoEstudoService
     private readonly ITopicoRepository _topicoRepository;
     private readonly IDisciplinaRepository _disciplinaRepository;
     private readonly IPesoDisciplinaService _pesoDisciplinaService;
-    private readonly IChatCompletionService _chatCompletionService;
+    private readonly IGeradorDeRespostaChat _geradorDeRespostaChat;
     private readonly IUnitOfWork _unitOfWork;
 
     /// <summary>
@@ -32,7 +31,7 @@ public class PlanoEstudoService : IPlanoEstudoService
         ITopicoRepository topicoRepository,
         IDisciplinaRepository disciplinaRepository,
         IPesoDisciplinaService pesoDisciplinaService,
-        IChatCompletionService chatCompletionService,
+        IGeradorDeRespostaChat geradorDeRespostaChat,
         IUnitOfWork unitOfWork)
     {
         _planoEstudoRepository = planoEstudoRepository;
@@ -41,7 +40,7 @@ public class PlanoEstudoService : IPlanoEstudoService
         _topicoRepository = topicoRepository;
         _disciplinaRepository = disciplinaRepository;
         _pesoDisciplinaService = pesoDisciplinaService;
-        _chatCompletionService = chatCompletionService;
+        _geradorDeRespostaChat = geradorDeRespostaChat;
         _unitOfWork = unitOfWork;
     }
 

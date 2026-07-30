@@ -30,13 +30,27 @@ public class RespostaUsuarioRepository : Repository<RespostaUsuario, Guid>, IRes
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<RespostaDisciplina>> GetHistoricoPorDisciplinaAsync(Guid usuarioId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<RespostaDisciplina>> GetHistoricoPorDisciplinaAsync(Guid usuarioId, int limitePorDisciplina, CancellationToken cancellationToken = default)
     {
-        return await Context.RespostasUsuario
-            .AsNoTracking()
-            .Where(r => r.UsuarioId == usuarioId)
-            .Join(Context.Questoes, r => r.QuestaoId, q => q.Id, (r, q) => new RespostaDisciplina(q.DisciplinaId, r.Correta, r.CriadoEm))
-            .OrderBy(rd => rd.CriadoEm)
+        // ROW_NUMBER() OVER (PARTITION BY ...) não tem tradução LINQ portável no EF Core — SQL cru via
+        // Database.SqlQuery é o mesmo padrão já usado em BuscarPorSimilaridadeAsync para o que o LINQ
+        // não alcança. Sem isso, o único jeito seria carregar o histórico inteiro do usuário (pode ser
+        // milhares de linhas ao longo do tempo) só para descartar quase tudo em memória.
+        // Os nomes das colunas abaixo (sem alias) já batem com a convenção snake_case do ForjaDbContext
+        // (UseSnakeCaseNamingConvention()) usada pelo Database.SqlQuery<T> para mapear resultado ->
+        // propriedade de RespostaDisciplina — DisciplinaId/Correta/CriadoEm viram disciplina_id/correta/criado_em.
+        return await Context.Database
+            .SqlQuery<RespostaDisciplina>($"""
+                SELECT disciplina_id, correta, criado_em
+                FROM (
+                    SELECT q.disciplina_id, ru.correta, ru.criado_em,
+                           row_number() OVER (PARTITION BY q.disciplina_id ORDER BY ru.criado_em DESC) AS rn
+                    FROM respostas_usuario ru
+                    JOIN questoes q ON q.id = ru.questao_id
+                    WHERE ru.usuario_id = {usuarioId}
+                ) ranked
+                WHERE rn <= {limitePorDisciplina}
+                """)
             .ToListAsync(cancellationToken);
     }
 }

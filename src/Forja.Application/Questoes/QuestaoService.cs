@@ -8,6 +8,9 @@ namespace Forja.Application.Questoes;
 /// </summary>
 public class QuestaoService : IQuestaoService
 {
+    /// <summary>Teto de itens por página, independente do que for pedido — evita varreduras não paginadas na prática.</summary>
+    private const int TamanhoPaginaMaximo = 100;
+
     private readonly IQuestaoRepository _questaoRepository;
 
     /// <summary>
@@ -24,9 +27,13 @@ public class QuestaoService : IQuestaoService
         Guid? carreiraId,
         Guid? bancaId,
         Guid? disciplinaId,
+        int skip = 0,
+        int take = 50,
         CancellationToken cancellationToken = default)
     {
-        return _questaoRepository.GetByFiltroAsync(carreiraId, bancaId, disciplinaId, StatusQuestao.Aprovada, cancellationToken);
+        var tamanho = Math.Clamp(take, 1, TamanhoPaginaMaximo);
+        var deslocamento = Math.Max(skip, 0);
+        return _questaoRepository.GetByFiltroAsync(carreiraId, bancaId, disciplinaId, StatusQuestao.Aprovada, deslocamento, tamanho, cancellationToken);
     }
 
     /// <inheritdoc />

@@ -27,7 +27,8 @@ public class PontuacaoServiceTests
         var usuario2 = Guid.NewGuid();
         var inicioSemana = Pontuacao.InicioDaSemana(DateOnly.FromDateTime(DateTime.UtcNow));
 
-        _pontuacaoRepository.Setup(r => r.GetRankingSemanalAsync(inicioSemana, It.IsAny<CancellationToken>()))
+        _pontuacaoRepository
+            .Setup(r => r.GetRankingSemanalAsync(inicioSemana, null, 0, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync([
                 new Pontuacao { UsuarioId = usuario1, PontosSemanaAtual = 50, SemanaReferencia = inicioSemana },
                 new Pontuacao { UsuarioId = usuario2, PontosSemanaAtual = 30, SemanaReferencia = inicioSemana },
@@ -48,20 +49,41 @@ public class PontuacaoServiceTests
     }
 
     [TestMethod]
+    public async Task ObterRankingSemanalAsync_ComPaginacao_CalculaPosicaoRelativaAoDeslocamento()
+    {
+        var usuario3 = Guid.NewGuid();
+        var inicioSemana = Pontuacao.InicioDaSemana(DateOnly.FromDateTime(DateTime.UtcNow));
+
+        // Página 2 (skip=2, take=1): repositório já devolve só a 3a posição do ranking geral.
+        _pontuacaoRepository
+            .Setup(r => r.GetRankingSemanalAsync(inicioSemana, null, 2, 1, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new Pontuacao { UsuarioId = usuario3, PontosSemanaAtual = 10, SemanaReferencia = inicioSemana }]);
+        _usuarioRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new Usuario { Id = usuario3, Nome = "Carol" }]);
+
+        var resultado = await _service.ObterRankingSemanalAsync(carreiraId: null, skip: 2, take: 1);
+
+        resultado.Should().ContainSingle();
+        resultado[0].Posicao.Should().Be(3, "a posição deve refletir o ranking geral, não a página isolada");
+    }
+
+    [TestMethod]
     public async Task ObterRankingSemanalAsync_ComFiltroDeCarreira_RestringeAosUsuariosDaCarreira()
     {
         var carreiraId = Guid.NewGuid();
         var usuarioDaCarreira = Guid.NewGuid();
-        var usuarioDeOutraCarreira = Guid.NewGuid();
         var inicioSemana = Pontuacao.InicioDaSemana(DateOnly.FromDateTime(DateTime.UtcNow));
 
-        _pontuacaoRepository.Setup(r => r.GetRankingSemanalAsync(inicioSemana, It.IsAny<CancellationToken>()))
-            .ReturnsAsync([
-                new Pontuacao { UsuarioId = usuarioDaCarreira, PontosSemanaAtual = 20, SemanaReferencia = inicioSemana },
-                new Pontuacao { UsuarioId = usuarioDeOutraCarreira, PontosSemanaAtual = 100, SemanaReferencia = inicioSemana },
-            ]);
         _planoEstudoRepository.Setup(r => r.GetByCarreiraIdAsync(carreiraId, It.IsAny<CancellationToken>()))
             .ReturnsAsync([new PlanoEstudo { Id = Guid.NewGuid(), UsuarioId = usuarioDaCarreira, CarreiraId = carreiraId }]);
+        // O repositório já recebe a restrição de usuários da carreira e filtra no banco — o usuário de
+        // outra carreira nunca é retornado, então nem participa deste teste.
+        _pontuacaoRepository
+            .Setup(r => r.GetRankingSemanalAsync(
+                inicioSemana,
+                It.Is<IReadOnlyCollection<Guid>>(ids => ids.Contains(usuarioDaCarreira) && ids.Count == 1),
+                0, 50, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new Pontuacao { UsuarioId = usuarioDaCarreira, PontosSemanaAtual = 20, SemanaReferencia = inicioSemana }]);
         _usuarioRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new Usuario { Id = usuarioDaCarreira, Nome = "Alice" }]);
 

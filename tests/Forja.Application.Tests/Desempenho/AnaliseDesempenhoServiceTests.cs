@@ -44,7 +44,7 @@ public class AnaliseDesempenhoServiceTests
         var usuarioId = Guid.NewGuid();
         var disciplinaId = Guid.NewGuid();
         // Anterior: 8/10 = 80%. Recente: 3/10 = 30%. Queda de 50 pontos percentuais.
-        _respostaRepository.Setup(r => r.GetHistoricoPorDisciplinaAsync(usuarioId, It.IsAny<CancellationToken>()))
+        _respostaRepository.Setup(r => r.GetHistoricoPorDisciplinaAsync(usuarioId, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CriarJanelas(disciplinaId, acertosAnteriores: 8, acertosRecentes: 3));
         _disciplinaRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync([new Disciplina { Id = disciplinaId, Nome = "Direito Constitucional" }]);
@@ -64,7 +64,7 @@ public class AnaliseDesempenhoServiceTests
         var usuarioId = Guid.NewGuid();
         var disciplinaId = Guid.NewGuid();
         // Anterior: 8/10 = 80%. Recente: 7/10 = 70%. Queda de so 10 pontos, abaixo do limiar de 15.
-        _respostaRepository.Setup(r => r.GetHistoricoPorDisciplinaAsync(usuarioId, It.IsAny<CancellationToken>()))
+        _respostaRepository.Setup(r => r.GetHistoricoPorDisciplinaAsync(usuarioId, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CriarJanelas(disciplinaId, acertosAnteriores: 8, acertosRecentes: 7));
 
         var alertas = await _service.DetectarQuedaDeDesempenhoAsync(usuarioId);
@@ -78,7 +78,7 @@ public class AnaliseDesempenhoServiceTests
         var usuarioId = Guid.NewGuid();
         var disciplinaId = Guid.NewGuid();
         // Anterior: 3/10 = 30%. Recente: 9/10 = 90%. Melhorou bastante.
-        _respostaRepository.Setup(r => r.GetHistoricoPorDisciplinaAsync(usuarioId, It.IsAny<CancellationToken>()))
+        _respostaRepository.Setup(r => r.GetHistoricoPorDisciplinaAsync(usuarioId, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(CriarJanelas(disciplinaId, acertosAnteriores: 3, acertosRecentes: 9));
 
         var alertas = await _service.DetectarQuedaDeDesempenhoAsync(usuarioId);
@@ -101,7 +101,7 @@ public class AnaliseDesempenhoServiceTests
             new(disciplinaId, false, DateTimeOffset.UtcNow.AddHours(-2)),
             new(disciplinaId, false, DateTimeOffset.UtcNow.AddHours(-1)),
         };
-        _respostaRepository.Setup(r => r.GetHistoricoPorDisciplinaAsync(usuarioId, It.IsAny<CancellationToken>()))
+        _respostaRepository.Setup(r => r.GetHistoricoPorDisciplinaAsync(usuarioId, 20, It.IsAny<CancellationToken>()))
             .ReturnsAsync(respostas);
 
         var alertas = await _service.DetectarQuedaDeDesempenhoAsync(usuarioId);

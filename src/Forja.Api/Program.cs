@@ -58,9 +58,11 @@ app.MapGet("/questoes", async (
     Guid? bancaId,
     Guid? disciplinaId,
     IQuestaoService questaoService,
-    CancellationToken cancellationToken) =>
+    CancellationToken cancellationToken,
+    int skip = 0,
+    int take = 50) =>
 {
-    var questoes = await questaoService.BuscarAsync(carreiraId, bancaId, disciplinaId, cancellationToken);
+    var questoes = await questaoService.BuscarAsync(carreiraId, bancaId, disciplinaId, skip, take, cancellationToken);
     return Results.Ok(questoes.Select(QuestaoResponse.De));
 }).RequireAuthorization();
 
@@ -156,9 +158,11 @@ app.MapGet("/revisao/pendente", async (
 app.MapGet("/ranking/semanal", async (
     Guid? carreiraId,
     IPontuacaoService pontuacaoService,
-    CancellationToken cancellationToken) =>
+    CancellationToken cancellationToken,
+    int skip = 0,
+    int take = 50) =>
 {
-    var ranking = await pontuacaoService.ObterRankingSemanalAsync(carreiraId, cancellationToken);
+    var ranking = await pontuacaoService.ObterRankingSemanalAsync(carreiraId, skip, take, cancellationToken);
     return Results.Ok(ranking.Select(RankingResponseItem.De));
 }).RequireAuthorization();
 

@@ -40,7 +40,7 @@ public class AnaliseDesempenhoService : IAnaliseDesempenhoService
     /// <inheritdoc />
     public async Task<IReadOnlyList<AlertaDesempenho>> DetectarQuedaDeDesempenhoAsync(Guid usuarioId, CancellationToken cancellationToken = default)
     {
-        var historico = await _respostaRepository.GetHistoricoPorDisciplinaAsync(usuarioId, cancellationToken);
+        var historico = await _respostaRepository.GetHistoricoPorDisciplinaAsync(usuarioId, TamanhoJanela * 2, cancellationToken);
 
         var quedas = new List<(Guid DisciplinaId, decimal TaxaAnterior, decimal TaxaRecente)>();
         foreach (var grupo in historico.GroupBy(r => r.DisciplinaId))

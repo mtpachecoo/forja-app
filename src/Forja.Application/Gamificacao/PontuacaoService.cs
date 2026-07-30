@@ -9,6 +9,9 @@ namespace Forja.Application.Gamificacao;
 /// </summary>
 public class PontuacaoService : IPontuacaoService
 {
+    /// <summary>Teto de itens por página, independente do que for pedido — evita varreduras não paginadas na prática.</summary>
+    private const int TamanhoPaginaMaximo = 100;
+
     private readonly IPontuacaoRepository _pontuacaoRepository;
     private readonly IUsuarioRepository _usuarioRepository;
     private readonly IPlanoEstudoRepository _planoEstudoRepository;
@@ -27,17 +30,25 @@ public class PontuacaoService : IPontuacaoService
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<RankingItem>> ObterRankingSemanalAsync(Guid? carreiraId, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<RankingItem>> ObterRankingSemanalAsync(
+        Guid? carreiraId,
+        int skip = 0,
+        int take = 50,
+        CancellationToken cancellationToken = default)
     {
-        var inicioSemanaAtual = Pontuacao.InicioDaSemana(DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime));
-        var pontuacoes = await _pontuacaoRepository.GetRankingSemanalAsync(inicioSemanaAtual, cancellationToken);
+        var tamanho = Math.Clamp(take, 1, TamanhoPaginaMaximo);
+        var deslocamento = Math.Max(skip, 0);
 
+        IReadOnlyCollection<Guid>? usuarioIdsDaCarreira = null;
         if (carreiraId.HasValue)
         {
             var planos = await _planoEstudoRepository.GetByCarreiraIdAsync(carreiraId.Value, cancellationToken);
-            var usuarioIdsDaCarreira = planos.Select(p => p.UsuarioId).ToHashSet();
-            pontuacoes = pontuacoes.Where(p => usuarioIdsDaCarreira.Contains(p.UsuarioId)).ToList();
+            usuarioIdsDaCarreira = planos.Select(p => p.UsuarioId).ToHashSet();
         }
+
+        var inicioSemanaAtual = Pontuacao.InicioDaSemana(DateOnly.FromDateTime(DateTimeOffset.UtcNow.UtcDateTime));
+        var pontuacoes = await _pontuacaoRepository.GetRankingSemanalAsync(
+            inicioSemanaAtual, usuarioIdsDaCarreira, deslocamento, tamanho, cancellationToken);
 
         var usuarios = await _usuarioRepository.GetByIdsAsync(pontuacoes.Select(p => p.UsuarioId), cancellationToken);
         var nomePorUsuarioId = usuarios.ToDictionary(u => u.Id, u => u.Nome);
@@ -47,7 +58,7 @@ public class PontuacaoService : IPontuacaoService
                 p.UsuarioId,
                 nomePorUsuarioId.GetValueOrDefault(p.UsuarioId, "Usuário"),
                 p.PontosSemanaAtual,
-                indice + 1))
+                deslocamento + indice + 1))
             .ToList();
     }
 }

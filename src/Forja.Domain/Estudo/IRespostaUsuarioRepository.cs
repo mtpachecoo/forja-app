@@ -27,14 +27,18 @@ public interface IRespostaUsuarioRepository : IRepository<RespostaUsuario, Guid>
     Task<int> ContarRespostasNoPomodoroAsync(Guid pomodoroId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Obtém o histórico de respostas de um usuário, já com a disciplina de cada questão respondida,
-    /// ordenado por data de criação (mais antiga primeiro). Usado pela análise de desempenho (RF-021)
-    /// para detectar queda de taxa de acerto por disciplina, sem custo de IA.
+    /// Obtém, para cada disciplina que o usuário já respondeu, as últimas <paramref name="limitePorDisciplina"/>
+    /// respostas (mais recentes primeiro dentro do limite, mas sem ordenação relativa entre disciplinas
+    /// diferentes garantida). Usado pela análise de desempenho (RF-021) para detectar queda de taxa de
+    /// acerto por disciplina, sem custo de IA. O limite é aplicado no próprio SQL (via janela
+    /// <c>ROW_NUMBER() OVER (PARTITION BY disciplina_id ...)</c>) para nunca carregar o histórico
+    /// inteiro do usuário em memória — só o suficiente para montar as janelas de comparação.
     /// </summary>
     /// <param name="usuarioId">Identificador do usuário.</param>
+    /// <param name="limitePorDisciplina">Quantidade máxima de respostas mais recentes retornadas por disciplina.</param>
     /// <param name="cancellationToken">Token de cancelamento da operação.</param>
-    /// <returns>Lista somente leitura do histórico, ordenada da resposta mais antiga para a mais recente.</returns>
-    Task<IReadOnlyList<RespostaDisciplina>> GetHistoricoPorDisciplinaAsync(Guid usuarioId, CancellationToken cancellationToken = default);
+    /// <returns>Lista somente leitura do histórico recente, limitado por disciplina.</returns>
+    Task<IReadOnlyList<RespostaDisciplina>> GetHistoricoPorDisciplinaAsync(Guid usuarioId, int limitePorDisciplina, CancellationToken cancellationToken = default);
 }
 
 /// <summary>

@@ -15,13 +15,17 @@ public interface IQuestaoRepository : IRepository<Questao, Guid>
     /// <param name="bancaId">Identificador da banca, ou <c>null</c> para não filtrar por banca.</param>
     /// <param name="disciplinaId">Identificador da disciplina, ou <c>null</c> para não filtrar por disciplina.</param>
     /// <param name="status">Status de revisão, ou <c>null</c> para não filtrar por status.</param>
+    /// <param name="skip">Quantidade de questões a pular (paginação).</param>
+    /// <param name="take">Quantidade máxima de questões a retornar (paginação).</param>
     /// <param name="cancellationToken">Token de cancelamento da operação.</param>
-    /// <returns>Lista somente leitura de questões que atendem aos filtros informados.</returns>
+    /// <returns>Lista somente leitura de questões que atendem aos filtros informados, já paginada.</returns>
     Task<IReadOnlyList<Questao>> GetByFiltroAsync(
         Guid? carreiraId,
         Guid? bancaId,
         Guid? disciplinaId,
         StatusQuestao? status,
+        int skip,
+        int take,
         CancellationToken cancellationToken = default);
 
     /// <summary>

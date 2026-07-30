@@ -19,6 +19,8 @@ public class QuestaoRepository : Repository<Questao, Guid>, IQuestaoRepository
         Guid? bancaId,
         Guid? disciplinaId,
         StatusQuestao? status,
+        int skip,
+        int take,
         CancellationToken cancellationToken = default)
     {
         var query = Context.Questoes.AsNoTracking().AsQueryable();
@@ -43,7 +45,13 @@ public class QuestaoRepository : Repository<Questao, Guid>, IQuestaoRepository
             query = query.Where(q => q.Status == status.Value);
         }
 
-        return await query.ToListAsync(cancellationToken);
+        // Ordenação explícita por Id: Skip/Take exigem uma ordem determinística, sem ela o Postgres
+        // não garante a mesma ordem entre chamadas e a paginação pode repetir ou pular registros.
+        return await query
+            .OrderBy(q => q.Id)
+            .Skip(skip)
+            .Take(take)
+            .ToListAsync(cancellationToken);
     }
 
     /// <inheritdoc />

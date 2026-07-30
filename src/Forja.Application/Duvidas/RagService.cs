@@ -1,6 +1,6 @@
+using Forja.Application.Common;
 using Forja.Application.Questoes;
 using Forja.Domain.Conteudo;
-using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Forja.Application.Duvidas;
 
@@ -21,7 +21,7 @@ public class RagService : IRagService
     private readonly IQuestaoService _questaoService;
     private readonly IChunkConteudoRepository _chunkRepository;
     private readonly IGeradorDeEmbeddings _geradorDeEmbeddings;
-    private readonly IChatCompletionService _chatCompletionService;
+    private readonly IGeradorDeRespostaChat _geradorDeRespostaChat;
 
     /// <summary>
     /// Cria uma nova instância do serviço.
@@ -29,17 +29,17 @@ public class RagService : IRagService
     /// <param name="questaoService">Serviço de questões, para validar a questão e obter seu enunciado.</param>
     /// <param name="chunkRepository">Repositório de chunks de conteúdo, para a busca por similaridade.</param>
     /// <param name="geradorDeEmbeddings">Gerador de embeddings, para embedar a pergunta do aluno.</param>
-    /// <param name="chatCompletionService">Serviço de chat completion do Semantic Kernel.</param>
+    /// <param name="geradorDeRespostaChat">Gerador de resposta de chat via LLM.</param>
     public RagService(
         IQuestaoService questaoService,
         IChunkConteudoRepository chunkRepository,
         IGeradorDeEmbeddings geradorDeEmbeddings,
-        IChatCompletionService chatCompletionService)
+        IGeradorDeRespostaChat geradorDeRespostaChat)
     {
         _questaoService = questaoService;
         _chunkRepository = chunkRepository;
         _geradorDeEmbeddings = geradorDeEmbeddings;
-        _chatCompletionService = chatCompletionService;
+        _geradorDeRespostaChat = geradorDeRespostaChat;
     }
 
     /// <inheritdoc />
@@ -57,14 +57,10 @@ public class RagService : IRagService
                 []);
         }
 
-        var historico = new ChatHistory();
-        historico.AddSystemMessage(InstrucaoDeSistema);
-        historico.AddUserMessage(MontarPrompt(questao.Enunciado, pergunta, chunks));
+        var respostaLlm = await _geradorDeRespostaChat.GerarRespostaAsync(
+            MontarPrompt(questao.Enunciado, pergunta, chunks), InstrucaoDeSistema, cancellationToken);
 
-        var respostasLlm = await _chatCompletionService.GetChatMessageContentsAsync(historico, cancellationToken: cancellationToken);
-        var respostaLlm = respostasLlm[0];
-
-        return new RespostaDuvida(respostaLlm.Content ?? string.Empty, chunks.Select(c => c.Id).ToList());
+        return new RespostaDuvida(respostaLlm ?? string.Empty, chunks.Select(c => c.Id).ToList());
     }
 
     private static string MontarPrompt(string enunciadoQuestao, string pergunta, IReadOnlyList<ChunkConteudo> chunks)

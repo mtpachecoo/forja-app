@@ -14,12 +14,27 @@ public class PontuacaoRepository : Repository<Pontuacao, Guid>, IPontuacaoReposi
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<Pontuacao>> GetRankingSemanalAsync(DateOnly semanaReferencia, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Pontuacao>> GetRankingSemanalAsync(
+        DateOnly semanaReferencia,
+        IReadOnlyCollection<Guid>? usuarioIds,
+        int skip,
+        int take,
+        CancellationToken cancellationToken = default)
     {
-        return await Context.Pontuacoes
+        var query = Context.Pontuacoes
             .AsNoTracking()
-            .Where(p => p.SemanaReferencia == semanaReferencia)
+            .Where(p => p.SemanaReferencia == semanaReferencia);
+
+        if (usuarioIds is not null)
+        {
+            query = query.Where(p => usuarioIds.Contains(p.UsuarioId));
+        }
+
+        return await query
             .OrderByDescending(p => p.PontosSemanaAtual)
+            .ThenBy(p => p.UsuarioId)
+            .Skip(skip)
+            .Take(take)
             .ToListAsync(cancellationToken);
     }
 }

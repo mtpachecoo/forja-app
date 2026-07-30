@@ -4,7 +4,6 @@ using Forja.Domain.Catalogo;
 using Forja.Domain.Common;
 using Forja.Domain.Conteudo;
 using Forja.Domain.Questoes;
-using Microsoft.SemanticKernel.ChatCompletion;
 
 namespace Forja.Application.Estudo;
 
@@ -35,7 +34,7 @@ public class PesoDisciplinaService : IPesoDisciplinaService
     private readonly IDisciplinaRepository _disciplinaRepository;
     private readonly IChunkConteudoRepository _chunkRepository;
     private readonly IQuestaoRepository _questaoRepository;
-    private readonly IChatCompletionService _chatCompletionService;
+    private readonly IGeradorDeRespostaChat _geradorDeRespostaChat;
     private readonly IUnitOfWork _unitOfWork;
 
     /// <summary>
@@ -48,7 +47,7 @@ public class PesoDisciplinaService : IPesoDisciplinaService
         IDisciplinaRepository disciplinaRepository,
         IChunkConteudoRepository chunkRepository,
         IQuestaoRepository questaoRepository,
-        IChatCompletionService chatCompletionService,
+        IGeradorDeRespostaChat geradorDeRespostaChat,
         IUnitOfWork unitOfWork)
     {
         _pesoRepository = pesoRepository;
@@ -57,7 +56,7 @@ public class PesoDisciplinaService : IPesoDisciplinaService
         _disciplinaRepository = disciplinaRepository;
         _chunkRepository = chunkRepository;
         _questaoRepository = questaoRepository;
-        _chatCompletionService = chatCompletionService;
+        _geradorDeRespostaChat = geradorDeRespostaChat;
         _unitOfWork = unitOfWork;
     }
 
@@ -181,17 +180,7 @@ public class PesoDisciplinaService : IPesoDisciplinaService
             .Replace("__NOMES_DISCIPLINAS__", nomesDisciplinas)
             .Replace("__TEXTO_EDITAL__", textoEdital);
 
-        var historico = new ChatHistory();
-        historico.AddUserMessage(prompt);
-
-        var respostas = await _chatCompletionService.GetChatMessageContentsAsync(historico, cancellationToken: cancellationToken);
-        var textoResposta = respostas[0].Content;
-        if (string.IsNullOrWhiteSpace(textoResposta))
-        {
-            return null;
-        }
-
-        var extracao = IaJsonResponseParser.TentarDesserializar<ExtracaoPesoResponse>(textoResposta);
+        var extracao = await _geradorDeRespostaChat.PedirRespostaEstruturadaAsync<ExtracaoPesoResponse>(prompt, cancellationToken: cancellationToken);
         if (extracao is not { Encontrado: true, Disciplinas.Count: > 0 })
         {
             return null;

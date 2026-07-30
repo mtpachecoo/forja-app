@@ -24,14 +24,14 @@ public class QuestaoServiceTests
         var esperado = new List<Questao> { new() { Id = Guid.NewGuid(), CarreiraId = carreiraId } };
 
         _questaoRepository
-            .Setup(r => r.GetByFiltroAsync(carreiraId, null, null, StatusQuestao.Aprovada, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByFiltroAsync(carreiraId, null, null, StatusQuestao.Aprovada, 0, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(esperado);
 
         var resultado = await _service.BuscarAsync(carreiraId, null, null);
 
         resultado.Should().BeEquivalentTo(esperado);
         _questaoRepository.Verify(
-            r => r.GetByFiltroAsync(carreiraId, null, null, StatusQuestao.Aprovada, It.IsAny<CancellationToken>()),
+            r => r.GetByFiltroAsync(carreiraId, null, null, StatusQuestao.Aprovada, 0, 50, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -42,14 +42,14 @@ public class QuestaoServiceTests
         var esperado = new List<Questao> { new() { Id = Guid.NewGuid(), BancaId = bancaId } };
 
         _questaoRepository
-            .Setup(r => r.GetByFiltroAsync(null, bancaId, null, StatusQuestao.Aprovada, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByFiltroAsync(null, bancaId, null, StatusQuestao.Aprovada, 0, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(esperado);
 
         var resultado = await _service.BuscarAsync(null, bancaId, null);
 
         resultado.Should().BeEquivalentTo(esperado);
         _questaoRepository.Verify(
-            r => r.GetByFiltroAsync(null, bancaId, null, StatusQuestao.Aprovada, It.IsAny<CancellationToken>()),
+            r => r.GetByFiltroAsync(null, bancaId, null, StatusQuestao.Aprovada, 0, 50, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 
@@ -61,14 +61,14 @@ public class QuestaoServiceTests
         var esperado = new List<Questao> { new() { Id = Guid.NewGuid(), CarreiraId = carreiraId, BancaId = bancaId } };
 
         _questaoRepository
-            .Setup(r => r.GetByFiltroAsync(carreiraId, bancaId, null, StatusQuestao.Aprovada, It.IsAny<CancellationToken>()))
+            .Setup(r => r.GetByFiltroAsync(carreiraId, bancaId, null, StatusQuestao.Aprovada, 0, 50, It.IsAny<CancellationToken>()))
             .ReturnsAsync(esperado);
 
         var resultado = await _service.BuscarAsync(carreiraId, bancaId, null);
 
         resultado.Should().BeEquivalentTo(esperado);
         _questaoRepository.Verify(
-            r => r.GetByFiltroAsync(carreiraId, bancaId, null, StatusQuestao.Aprovada, It.IsAny<CancellationToken>()),
+            r => r.GetByFiltroAsync(carreiraId, bancaId, null, StatusQuestao.Aprovada, 0, 50, It.IsAny<CancellationToken>()),
             Times.Once);
     }
 

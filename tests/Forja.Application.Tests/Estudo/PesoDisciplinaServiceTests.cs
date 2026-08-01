@@ -104,6 +104,43 @@ public class PesoDisciplinaServiceTests
     }
 
     [TestMethod]
+    public async Task ObterOuCalcularPesosAsync_CasoA_GroundingRejeitaDisciplinaForaDoCatalogo_CaiParaContagemQuestoes()
+    {
+        var editalId = Guid.NewGuid();
+        var carreiraId = Guid.NewGuid();
+        var direitoConstitucionalId = Guid.NewGuid();
+
+        ConfigurarSemPesosExistentes(editalId);
+        ConfigurarEditalETopicos(editalId, carreiraId, (Guid.NewGuid(), direitoConstitucionalId));
+
+        _chunkRepository.Setup(r => r.GetByEditalIdAsync(editalId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new ChunkConteudo { Id = Guid.NewGuid(), FonteId = Guid.NewGuid(), Texto = "O edital tera 20 questoes de Direito Penal." }]);
+
+        _disciplinaRepository.Setup(r => r.GetByIdsAsync(It.IsAny<IEnumerable<Guid>>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync([new Disciplina { Id = direitoConstitucionalId, Nome = "Direito Constitucional" }]);
+
+        // A IA "alucina" uma disciplina ("Direito Penal") que não faz parte do catálogo real deste
+        // edital (só contém "Direito Constitucional") — o grounding deve descartá-la inteiramente,
+        // fazendo a extração via IA falhar e o cálculo cair para o Caso B (contagem de questões).
+        const string jsonResposta = """
+            {"encontrado": true, "disciplinas": [{"nome": "Direito Penal", "peso": 20}]}
+            """;
+        _geradorDeRespostaChat
+            .Setup(c => c.GerarRespostaAsync(It.IsAny<string>(), It.IsAny<string?>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(jsonResposta);
+
+        _questaoRepository.Setup(r => r.ContarAprovadasPorDisciplinaAsync(carreiraId, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new Dictionary<Guid, int> { [direitoConstitucionalId] = 37 });
+
+        var resultado = await _service.ObterOuCalcularPesosAsync(editalId);
+
+        resultado.Should().ContainSingle(p => p.DisciplinaId == direitoConstitucionalId && p.Peso == 37m);
+        _pesoRepository.Verify(r => r.AddRangeAsync(
+            It.Is<IEnumerable<EditalPesoDisciplina>>(l => l.Single().Fonte == FontePesoDisciplina.ContagemQuestoes),
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [TestMethod]
     public async Task ObterOuCalcularPesosAsync_CasoB_AmostraSuficiente_UsaContagemComoPeso()
     {
         var editalId = Guid.NewGuid();

@@ -238,6 +238,32 @@ def listar_bancas(conn: psycopg.Connection[Any]) -> dict[str, UUID]:
         return {nome: UUID(str(id_)) for nome, id_ in cur.fetchall()}
 
 
+def buscar_edital_id(
+    conn: psycopg.Connection[Any], *, carreira_id: UUID, banca_id: UUID, ano: int
+) -> UUID | None:
+    """Procura o edital já cadastrado pra uma combinação carreira/banca/ano.
+
+    Usado pelo processamento em lote (``pipelines.processar_pasta``) pra resolver
+    o ``edital_id`` de uma prova sem confirmação manual — diferente do comando
+    ``processar`` interativo (que pergunta o UUID direto), em lote não há prompt
+    disponível, então o edital só é usado se já estiver cadastrado.
+
+    Returns:
+        O ``id`` do edital, só quando existe EXATAMENTE UM cadastrado pra essa
+        combinação — ``None`` se não achar nenhum ou se achar mais de um (ambíguo
+        demais pra decidir sozinho sem confirmação).
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id FROM editais WHERE carreira_id = %s AND banca_id = %s AND ano = %s",
+            (carreira_id, banca_id, ano),
+        )
+        linhas = cur.fetchall()
+    if len(linhas) != 1:
+        return None
+    return UUID(str(linhas[0][0]))
+
+
 def existem_questoes_para_edital(conn: psycopg.Connection[Any], edital_id: UUID) -> bool:
     """Verifica se já existem questões gravadas para o ``edital_id`` de uma prova.
 

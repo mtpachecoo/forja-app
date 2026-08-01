@@ -216,6 +216,28 @@ def listar_disciplinas(conn: psycopg.Connection[Any]) -> dict[str, UUID]:
         return {nome: UUID(str(id_)) for nome, id_ in cur.fetchall()}
 
 
+def listar_carreiras(conn: psycopg.Connection[Any]) -> dict[str, UUID]:
+    """Lê o catálogo de carreiras já cadastradas, como um mapa nome -> id.
+
+    Mesmo padrão de :func:`listar_disciplinas` — usado por
+    ``infrastructure.llm.classificar_documento`` pra restringir a classificação do
+    LLM a carreiras que já existem, nunca inventar uma nova.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT nome, id FROM carreiras")
+        return {nome: UUID(str(id_)) for nome, id_ in cur.fetchall()}
+
+
+def listar_bancas(conn: psycopg.Connection[Any]) -> dict[str, UUID]:
+    """Lê o catálogo de bancas já cadastradas, como um mapa nome -> id.
+
+    Mesmo padrão de :func:`listar_disciplinas`/:func:`listar_carreiras`.
+    """
+    with conn.cursor() as cur:
+        cur.execute("SELECT nome, id FROM bancas")
+        return {nome: UUID(str(id_)) for nome, id_ in cur.fetchall()}
+
+
 def existem_questoes_para_edital(conn: psycopg.Connection[Any], edital_id: UUID) -> bool:
     """Verifica se já existem questões gravadas para o ``edital_id`` de uma prova.
 

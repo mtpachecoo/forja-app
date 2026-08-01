@@ -1,0 +1,38 @@
+[project]
+name = "motor-conteudo"
+version = "0.1.0"
+description = "Extração/chunking de editais/leis (PDF) e ingestão no Postgres/Voyage do Forja."
+readme = "README.md"
+authors = [
+    { name = "Pacheco", email = "Pacheco@NASSIANIA" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.5.1",
+    "pdfplumber>=0.11.10",
+    "pgvector>=0.5.0",
+    "psycopg[binary]>=3.3.4",
+    "python-dotenv>=1.2.2",
+    "requests>=2.34.2",
+]
+
+[build-system]
+requires = ["uv_build>=0.11.32,<0.12.0"]
+build-backend = "uv_build"
+
+[dependency-groups]
+dev = [
+    "fpdf2>=2.8.7",
+    "mypy>=2.3.0",
+    "pytest>=9.1.1",
+    "types-requests>=2.33.0.20260712",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+disallow_any_generics = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

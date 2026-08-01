@@ -1,0 +1,19 @@
+## Segredos locais
+.env
+.env.*
+!.env.example
+
+## Ambiente virtual (uv recria a partir de pyproject.toml + uv.lock)
+.venv/
+
+## Caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+## Empacotamento
+*.egg-info/
+dist/
+build/

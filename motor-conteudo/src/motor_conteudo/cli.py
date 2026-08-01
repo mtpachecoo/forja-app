@@ -7,6 +7,7 @@ Uso::
     python -m motor_conteudo digitalizar-prova prova.pdf gabarito.pdf \\
         --carreira-id <uuid> --banca-id <uuid> --edital-id <uuid> --ano 2026
     python -m motor_conteudo processar caminho.pdf [gabarito.pdf]
+    python -m motor_conteudo processar-pasta caminho/dados
 """
 
 from __future__ import annotations
@@ -24,6 +25,7 @@ from motor_conteudo.infrastructure.postgres import TipoFonte, conectar, listar_b
 from motor_conteudo.pipelines.digitalizar_prova import ErroDeDigitalizacao, digitalizar_prova
 from motor_conteudo.pipelines.ingestao_rag import ErroDeIngestao, ingerir_pdf
 from motor_conteudo.pipelines.leitura_pdf import ler_pdf_ou_falhar
+from motor_conteudo.pipelines.processar_pasta import ErroDeProcessamentoEmLote, processar_pasta
 
 _TAMANHO_TEXTO_CAPA = 6000  # caracteres — cobre capa/rosto sem exigir o PDF inteiro
 
@@ -50,6 +52,8 @@ def main(argv: list[str] | None = None) -> int:
         return _comando_digitalizar_prova(args)
     if args.comando == "processar":
         return _comando_processar(args)
+    if args.comando == "processar-pasta":
+        return _comando_processar_pasta(args)
 
     parser.print_help()
     return 1
@@ -117,6 +121,15 @@ def _construir_parser() -> argparse.ArgumentParser:
         default=None,
         help="Caminho do PDF do gabarito oficial, se o documento classificado for uma prova.",
     )
+
+    processar_pasta_parser = subparsers.add_parser(
+        "processar-pasta",
+        help=(
+            "Varre uma pasta de PDFs, pareia prova+gabarito pelo nome do arquivo, classifica e "
+            "grava cada um direto (sem confirmação) — uma falha num item não para o lote."
+        ),
+    )
+    processar_pasta_parser.add_argument("pasta", type=Path, help="Caminho da pasta com os PDFs a processar.")
 
     return parser
 
@@ -291,3 +304,23 @@ def _confirmar_e_processar_prova(
         )
 
     return 0
+
+
+def _comando_processar_pasta(args: argparse.Namespace) -> int:
+    try:
+        relatorio = processar_pasta(args.pasta)
+    except ErroDeProcessamentoEmLote as erro:
+        print(f"Erro: {erro}", file=sys.stderr)
+        return 1
+
+    for item in relatorio.itens:
+        status = "OK" if item.sucesso else "FALHA"
+        tipo = item.classificacao.tipo if item.classificacao is not None else "?"
+        print(f"[{status}] {item.arquivo.name} ({tipo}): {item.mensagem}")
+
+    print(
+        f"Relatório final: {relatorio.quantidade_sucesso} processado(s), "
+        f"{relatorio.quantidade_falha} falhou(aram) de {len(relatorio.itens)} item(ns)."
+    )
+
+    return 0 if relatorio.quantidade_falha == 0 else 1

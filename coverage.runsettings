@@ -17,10 +17,14 @@
             **/obj/**/*.cs
           </ExcludeByFile>
 
+          <!-- CompilerGeneratedAttribute NÃO entra aqui: a state machine gerada pelo compilador para
+               métodos async carrega esse atributo, e excluí-lo apaga o corpo inteiro de todo método
+               async (a esmagadora maioria da camada de aplicação) da instrumentação — reduzindo cada
+               método a um único sequence point trivial e invalidando qualquer métrica de risco (CRAP)
+               calculada em cima disso. -->
           <ExcludeByAttribute>
             Obsolete,
             GeneratedCodeAttribute,
-            CompilerGeneratedAttribute,
             ExcludeFromCodeCoverageAttribute
           </ExcludeByAttribute>
 

@@ -61,12 +61,6 @@ public class Repository<TEntity, TKey> : IRepository<TEntity, TKey> where TEntit
     }
 
     /// <inheritdoc />
-    public async Task<IReadOnlyList<TEntity>> GetAllAsync(CancellationToken cancellationToken = default)
-    {
-        return await Context.Set<TEntity>().AsNoTracking().ToListAsync(cancellationToken);
-    }
-
-    /// <inheritdoc />
     public async Task AddAsync(TEntity entity, CancellationToken cancellationToken = default)
     {
         await Context.Set<TEntity>().AddAsync(entity, cancellationToken);
@@ -76,11 +70,5 @@ public class Repository<TEntity, TKey> : IRepository<TEntity, TKey> where TEntit
     public void Update(TEntity entity)
     {
         Context.Set<TEntity>().Update(entity);
-    }
-
-    /// <inheritdoc />
-    public void Remove(TEntity entity)
-    {
-        Context.Set<TEntity>().Remove(entity);
     }
 }

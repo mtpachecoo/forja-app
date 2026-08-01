@@ -251,8 +251,8 @@ public class PlanoEstudoServiceTests
 
         resultado.PlanoNovo.Plano.Id.Should().NotBe(planoAnterior.Id, "o plano novo tem que ser uma entidade diferente do anterior");
 
-        // O plano anterior nunca é removido — só deixa de ser "o mais recente".
-        _planoEstudoRepository.Verify(r => r.Remove(It.IsAny<PlanoEstudo>()), Times.Never);
+        // O plano anterior nunca é removido — só deixa de ser "o mais recente". IRepository não expõe
+        // mais um método de remoção genérico, então essa garantia agora é estrutural, não testável via mock.
         _planoEstudoRepository.Verify(r => r.AddAsync(It.Is<PlanoEstudo>(p => p.Id == resultado.PlanoNovo.Plano.Id), It.IsAny<CancellationToken>()), Times.Once);
     }
 }

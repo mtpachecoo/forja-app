@@ -7,9 +7,6 @@ namespace Forja.Application.Estudo;
 /// </summary>
 public class RevisaoEspacadaService : IRevisaoEspacadaService
 {
-    /// <summary>Intervalo mínimo (dias) para o qual o intervalo reseta após um erro.</summary>
-    private const int IntervaloMinimoDias = 1;
-
     private readonly IRevisaoEspacadaRepository _revisaoRepository;
 
     /// <summary>
@@ -38,24 +35,9 @@ public class RevisaoEspacadaService : IRevisaoEspacadaService
             Id = Guid.NewGuid(),
             UsuarioId = usuarioId,
             QuestaoId = questaoId,
-            ErrosConsecutivos = 0,
-            IntervaloDiasAtual = IntervaloMinimoDias,
         };
 
-        // RN-003: acerto aumenta o intervalo (revisa mais tarde); erro consecutivo reseta o intervalo
-        // para o mínimo (revisa de novo mais cedo) — não o contrário.
-        if (correta)
-        {
-            revisao.ErrosConsecutivos = 0;
-            revisao.IntervaloDiasAtual *= 2;
-        }
-        else
-        {
-            revisao.ErrosConsecutivos += 1;
-            revisao.IntervaloDiasAtual = IntervaloMinimoDias;
-        }
-
-        revisao.ProximaRevisaoEm = hoje.AddDays(revisao.IntervaloDiasAtual);
+        revisao.RegistrarResultado(correta, hoje);
 
         if (jaExistia)
         {

@@ -17,6 +17,8 @@ import pytest
 
 from motor_conteudo.infrastructure.llm import (
     _INSTRUCAO_DE_SISTEMA,
+    _INSTRUCAO_DE_SISTEMA_CLASSIFICACAO,
+    classificar_documento,
     extrair_questoes_estruturadas,
     obter_api_key,
 )
@@ -186,3 +188,84 @@ def test_requisicao_enviada_ao_gemini_inclui_a_instrucao_de_grounding() -> None:
     assert corpo_enviado["generationConfig"]["responseSchema"]["properties"]["questoes"]["items"][
         "properties"
     ]["disciplina"]["enum"] == ["Geral"]
+
+
+def test_classificar_documento_com_todos_os_campos_identificados() -> None:
+    payload = {"tipo": "prova", "carreira": "Analista Judiciário", "banca": "Cebraspe", "ano": 2025}
+
+    with patch("motor_conteudo.infrastructure.llm.requests.post", return_value=_resposta_gemini_ok(payload)):
+        classificacao = classificar_documento(
+            "texto da capa",
+            carreiras_permitidas=["Analista Judiciário"],
+            bancas_permitidas=["Cebraspe"],
+        )
+
+    assert classificacao.tipo == "prova"
+    assert classificacao.carreira == "Analista Judiciário"
+    assert classificacao.banca == "Cebraspe"
+    assert classificacao.ano == 2025
+
+
+def test_classificar_documento_com_campos_nao_identificados_devolve_none() -> None:
+    payload = {"tipo": "edital", "carreira": None, "banca": None, "ano": None}
+
+    with patch("motor_conteudo.infrastructure.llm.requests.post", return_value=_resposta_gemini_ok(payload)):
+        classificacao = classificar_documento(
+            "texto da capa", carreiras_permitidas=["Analista Judiciário"], bancas_permitidas=["Cebraspe"]
+        )
+
+    assert classificacao.tipo == "edital"
+    assert classificacao.carreira is None
+    assert classificacao.banca is None
+    assert classificacao.ano is None
+
+
+def test_classificar_documento_carreiras_permitidas_vazia_nao_chama_a_api() -> None:
+    with patch("motor_conteudo.infrastructure.llm.requests.post") as post_mockado:
+        with pytest.raises(RuntimeError, match="[Cc]arreiras permitidas"):
+            classificar_documento("texto", carreiras_permitidas=[], bancas_permitidas=["Cebraspe"])
+
+    post_mockado.assert_not_called()
+
+
+def test_classificar_documento_bancas_permitidas_vazia_nao_chama_a_api() -> None:
+    with patch("motor_conteudo.infrastructure.llm.requests.post") as post_mockado:
+        with pytest.raises(RuntimeError, match="[Bb]ancas permitidas"):
+            classificar_documento(
+                "texto", carreiras_permitidas=["Analista Judiciário"], bancas_permitidas=[]
+            )
+
+    post_mockado.assert_not_called()
+
+
+def test_classificar_documento_instrucao_de_sistema_exige_grounding_explicito() -> None:
+    instrucao_normalizada = _INSTRUCAO_DE_SISTEMA_CLASSIFICACAO.lower()
+
+    assert "estritamente" in instrucao_normalizada
+    assert "inventar" in instrucao_normalizada
+    assert "conhecimento próprio" in instrucao_normalizada
+    assert "null" in instrucao_normalizada
+
+
+def test_classificar_documento_requisicao_restringe_carreira_e_banca_ao_catalogo() -> None:
+    payload = {"tipo": "lei", "carreira": None, "banca": None, "ano": None}
+
+    with patch(
+        "motor_conteudo.infrastructure.llm.requests.post", return_value=_resposta_gemini_ok(payload)
+    ) as post_mockado:
+        classificar_documento(
+            "texto da capa",
+            carreiras_permitidas=["Analista Judiciário"],
+            bancas_permitidas=["Cebraspe", "FGV"],
+        )
+
+    _url, kwargs = post_mockado.call_args
+    corpo_enviado = kwargs["json"]
+    assert corpo_enviado["system_instruction"]["parts"][0]["text"] == _INSTRUCAO_DE_SISTEMA_CLASSIFICACAO
+    schema = corpo_enviado["generationConfig"]["responseSchema"]
+    assert schema["properties"]["tipo"]["enum"] == ["lei", "edital", "prova"]
+    assert schema["properties"]["carreira"]["enum"] == ["Analista Judiciário"]
+    assert schema["properties"]["carreira"]["nullable"] is True
+    assert schema["properties"]["banca"]["enum"] == ["Cebraspe", "FGV"]
+    assert schema["properties"]["banca"]["nullable"] is True
+    assert schema["properties"]["ano"]["nullable"] is True

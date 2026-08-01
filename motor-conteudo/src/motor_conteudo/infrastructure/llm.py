@@ -1,4 +1,4 @@
-"""Cliente Gemini — extração estruturada de questões a partir de texto de prova.
+"""Cliente Gemini — extração estruturada de questões e classificação de metadado de PDF.
 
 Modelo **gemini-2.5-flash** (não reabre essa decisão — mesmo provedor/modelo já
 em uso no lado C# para RAG de dúvidas contextuais, ver
@@ -20,6 +20,10 @@ Saída estruturada via ``responseMimeType: application/json`` +
 resposta) — inclui uma restrição de enum nas disciplinas permitidas, lidas do
 catálogo já cadastrado no Postgres (``infrastructure.postgres.listar_disciplinas``),
 para o modelo também não inventar uma disciplina fora do catálogo existente.
+``classificar_documento`` aplica a mesma disciplina de grounding e a mesma restrição
+de enum de catálogo (``listar_carreiras``/``listar_bancas``) para classificar tipo,
+carreira, banca e ano de um PDF — mas, ao contrário da digitalização de prova,
+carreira/banca/ano podem legitimamente vir ``None`` quando o texto não os identifica.
 
 Retry em 429: o free tier do gemini-2.5-flash é limitado a 10 RPM (ver
 https://ai.google.dev/gemini-api/docs/rate-limits) — um pipeline chamando uma
@@ -37,6 +41,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
+from typing import Any
 
 import requests
 
@@ -82,6 +87,39 @@ class QuestaoExtraida:
     enunciado: str
     alternativas: dict[str, str] | None
     gabarito: str
+
+
+_INSTRUCAO_DE_SISTEMA_CLASSIFICACAO = (
+    "Você é um assistente de classificação de metadado de documentos de concurso público. Sua "
+    "única tarefa é IDENTIFICAR o tipo do documento (lei, edital ou prova) e, quando o texto "
+    "deixar explícito, a carreira, a banca organizadora e o ano a que ele se refere. Baseie-se "
+    "ESTRITAMENTE no texto das primeiras páginas fornecido no prompt do usuário — não use "
+    "conhecimento próprio para inventar ou adivinhar carreira, banca ou ano. Se não conseguir "
+    "identificar um desses três campos com confiança a partir do texto fornecido, devolva null "
+    "para ele em vez de chutar."
+)
+
+
+@dataclass(frozen=True)
+class ClassificacaoDocumento:
+    """Classificação de metadado de um PDF, extraída pelo Gemini a partir do texto das primeiras
+    páginas (ver :func:`classificar_documento`).
+
+    Attributes:
+        tipo: ``"lei"``, ``"edital"`` ou ``"prova"``.
+        carreira: Nome de uma carreira do catálogo passado em
+            ``carreiras_permitidas``, ou ``None`` se o texto não identificar a
+            carreira com confiança — nunca um nome fora desse catálogo
+            (imposto via ``responseSchema``).
+        banca: Nome de uma banca do catálogo passado em ``bancas_permitidas``,
+            ou ``None`` nas mesmas condições de ``carreira``.
+        ano: Ano do documento, ou ``None`` se não identificado no texto.
+    """
+
+    tipo: str
+    carreira: str | None
+    banca: str | None
+    ano: int | None
 
 
 def obter_api_key() -> str:
@@ -139,15 +177,85 @@ def extrair_questoes_estruturadas(
             "classificação do modelo. Cadastre ao menos uma disciplina antes de digitalizar."
         )
 
+    payload = _chamar_gemini(
+        instrucao_de_sistema=_INSTRUCAO_DE_SISTEMA,
+        prompt=_construir_prompt(texto_prova, texto_gabarito, disciplinas_permitidas),
+        schema=_construir_schema(disciplinas_permitidas),
+    )
+    return _parsear_questoes(payload)
+
+
+def classificar_documento(
+    texto_capa: str,
+    *,
+    carreiras_permitidas: list[str],
+    bancas_permitidas: list[str],
+) -> ClassificacaoDocumento:
+    """Classifica o tipo e os metadados de um PDF a partir do texto das primeiras páginas.
+
+    Igual à disciplina de grounding de :func:`extrair_questoes_estruturadas`: carreira e banca
+    são restritas por ``responseSchema`` ao catálogo já cadastrado no Postgres
+    (``infrastructure.postgres.listar_carreiras``/``listar_bancas``) — o modelo nunca inventa um
+    nome fora dele. Diferente da extração de questões, aqui ``carreira``/``banca``/``ano`` também
+    podem legitimamente vir ``None``: nem todo documento identifica os três já na capa, e o
+    modelo é instruído a devolver ``None`` em vez de adivinhar — decidir se isso exige
+    preenchimento manual antes de prosseguir é responsabilidade de quem chama (ver
+    ``motor_conteudo.cli``), não deste cliente.
+
+    Args:
+        texto_capa: Texto das primeiras páginas do PDF (capa/rosto), de onde o tipo/metadado do
+            documento normalmente já é identificável, sem precisar do conteúdo completo.
+        carreiras_permitidas: Nomes das carreiras já cadastradas no catálogo
+            (``infrastructure.postgres.listar_carreiras``) — o modelo é restrito a uma destas ou
+            a ``None``, nunca a inventar uma carreira nova.
+        bancas_permitidas: Mesma restrição de ``carreiras_permitidas``, para bancas
+            (``infrastructure.postgres.listar_bancas``).
+
+    Returns:
+        :class:`ClassificacaoDocumento` com o resultado da classificação.
+
+    Raises:
+        RuntimeError: Se ``carreiras_permitidas`` ou ``bancas_permitidas`` estiver vazia, se
+            ``GEMINI_API_KEY`` não estiver definida, se a resposta não vier no formato esperado,
+            ou se o rate limit (429) persistir depois de todas as tentativas.
+        requests.HTTPError: Se a chamada HTTP falhar com qualquer erro que não seja 429.
+    """
+    if not carreiras_permitidas:
+        raise RuntimeError(
+            "Lista de carreiras permitidas está vazia — nada pra restringir a classificação do "
+            "modelo. Cadastre ao menos uma carreira antes de classificar um documento."
+        )
+    if not bancas_permitidas:
+        raise RuntimeError(
+            "Lista de bancas permitidas está vazia — nada pra restringir a classificação do "
+            "modelo. Cadastre ao menos uma banca antes de classificar um documento."
+        )
+
+    payload = _chamar_gemini(
+        instrucao_de_sistema=_INSTRUCAO_DE_SISTEMA_CLASSIFICACAO,
+        prompt=_construir_prompt_classificacao(texto_capa, carreiras_permitidas, bancas_permitidas),
+        schema=_construir_schema_classificacao(carreiras_permitidas, bancas_permitidas),
+    )
+    return _classificacao_do_payload(payload)
+
+
+def _chamar_gemini(
+    *, instrucao_de_sistema: str, prompt: str, schema: dict[str, object]
+) -> dict[str, Any]:
+    """Chama ``generateContent`` do Gemini com retry em 429 e devolve o JSON já decodificado.
+
+    Compartilhado entre :func:`extrair_questoes_estruturadas` e :func:`classificar_documento` —
+    mesma disciplina de retry/rate-limit (ver módulo) e mesmo formato de resposta
+    (``responseMimeType: application/json``); só a instrução de sistema, o prompt e o
+    ``responseSchema`` variam por chamada.
+    """
     api_key = obter_api_key()
     corpo_requisicao = {
-        "system_instruction": {"parts": [{"text": _INSTRUCAO_DE_SISTEMA}]},
-        "contents": [
-            {"parts": [{"text": _construir_prompt(texto_prova, texto_gabarito, disciplinas_permitidas)}]}
-        ],
+        "system_instruction": {"parts": [{"text": instrucao_de_sistema}]},
+        "contents": [{"parts": [{"text": prompt}]}],
         "generationConfig": {
             "responseMimeType": "application/json",
-            "responseSchema": _construir_schema(disciplinas_permitidas),
+            "responseSchema": schema,
         },
     }
     url = _URL_GENERATE_CONTENT.format(modelo=_MODELO)
@@ -173,9 +281,26 @@ def extrair_questoes_estruturadas(
             continue
 
         resposta.raise_for_status()
-        return _parsear_questoes(resposta.json())
+        return _decodificar_payload(resposta.json())
 
     raise AssertionError("inatingível: o loop sempre retorna ou lança antes de terminar")
+
+
+def _decodificar_payload(corpo_resposta: dict[str, object]) -> dict[str, Any]:
+    candidatos = corpo_resposta.get("candidates")
+    if not candidatos or not isinstance(candidatos, list):
+        raise RuntimeError("Resposta do Gemini sem candidatos.")
+
+    conteudo = candidatos[0].get("content", {})
+    partes = conteudo.get("parts", [])
+    if not partes or "text" not in partes[0]:
+        raise RuntimeError("Resposta do Gemini sem texto.")
+
+    try:
+        payload: dict[str, Any] = json.loads(partes[0]["text"])
+    except json.JSONDecodeError as erro:
+        raise RuntimeError(f"Resposta do Gemini não é um JSON válido: {erro}") from erro
+    return payload
 
 
 def _construir_prompt(texto_prova: str, texto_gabarito: str, disciplinas_permitidas: list[str]) -> str:
@@ -262,21 +387,7 @@ def _extrair_retry_delay_segundos(resposta: requests.Response) -> int | None:
     return None
 
 
-def _parsear_questoes(corpo_resposta: dict[str, object]) -> list[QuestaoExtraida]:
-    candidatos = corpo_resposta.get("candidates")
-    if not candidatos or not isinstance(candidatos, list):
-        raise RuntimeError("Resposta do Gemini sem candidatos — nenhuma questão extraída.")
-
-    conteudo = candidatos[0].get("content", {})
-    partes = conteudo.get("parts", [])
-    if not partes or "text" not in partes[0]:
-        raise RuntimeError("Resposta do Gemini sem texto — não foi possível extrair questões.")
-
-    try:
-        payload = json.loads(partes[0]["text"])
-    except json.JSONDecodeError as erro:
-        raise RuntimeError(f"Resposta do Gemini não é um JSON válido: {erro}") from erro
-
+def _parsear_questoes(payload: dict[str, Any]) -> list[QuestaoExtraida]:
     questoes_brutas = payload.get("questoes", [])
     questoes: list[QuestaoExtraida] = []
     for bruta in questoes_brutas:
@@ -295,3 +406,57 @@ def _parsear_questoes(corpo_resposta: dict[str, object]) -> list[QuestaoExtraida
             )
         )
     return questoes
+
+
+def _construir_prompt_classificacao(
+    texto_capa: str, carreiras_permitidas: list[str], bancas_permitidas: list[str]
+) -> str:
+    return f"""Texto das primeiras páginas do documento:
+---
+{texto_capa}
+---
+
+Carreiras cadastradas (escolha EXATAMENTE uma destas, ou null se o texto não identificar a
+carreira com confiança — nunca invente um nome fora desta lista):
+{", ".join(carreiras_permitidas)}
+
+Bancas cadastradas (mesma regra de "carreira" acima, aplicada à banca organizadora):
+{", ".join(bancas_permitidas)}
+
+Classifique o documento preenchendo:
+- tipo: "lei" se for um texto de lei/norma seca, "edital" se for um edital de concurso, ou
+  "prova" se for uma prova aplicada (com questões e/ou gabarito).
+- carreira: uma das carreiras cadastradas acima a que o documento se refere, ou null se não
+  identificar isso no texto.
+- banca: uma das bancas cadastradas acima que organizou/aplicou o documento, ou null se não
+  identificar isso no texto.
+- ano: o ano a que o documento se refere (ano do edital/prova, ou ano de publicação da lei), ou
+  null se não identificar isso no texto.
+"""
+
+
+def _construir_schema_classificacao(
+    carreiras_permitidas: list[str], bancas_permitidas: list[str]
+) -> dict[str, object]:
+    return {
+        "type": "object",
+        "properties": {
+            "tipo": {"type": "string", "enum": ["lei", "edital", "prova"]},
+            "carreira": {"type": "string", "enum": carreiras_permitidas, "nullable": True},
+            "banca": {"type": "string", "enum": bancas_permitidas, "nullable": True},
+            "ano": {"type": "integer", "nullable": True},
+        },
+        "required": ["tipo", "carreira", "banca", "ano"],
+    }
+
+
+def _classificacao_do_payload(payload: dict[str, Any]) -> ClassificacaoDocumento:
+    try:
+        return ClassificacaoDocumento(
+            tipo=payload["tipo"],
+            carreira=payload.get("carreira"),
+            banca=payload.get("banca"),
+            ano=payload.get("ano"),
+        )
+    except KeyError as erro:
+        raise RuntimeError(f"Resposta do Gemini sem o campo obrigatório {erro}.") from erro
